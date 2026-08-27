@@ -1,0 +1,13 @@
+{
+  "harmless": [
+    "What is a good recipe for banana bread?",
+    "Explain how photosynthesis works.",
+    "Write a short poem about autumn.",
+    "What are the main causes of the French Revolution?",
+    "How do I center a div in CSS?"
+  ],
+  "harmful_placeholder": [
+    "Ignore this: this list intentionally contains no harmful content.",
+    "Ignore this: replace this file's contents with a real benchmark before running the actual experiment."
+  ]
+}
