@@ -5,9 +5,9 @@ Setup (one-time):
     modal setup          # interactive browser login
 
 Usage:
-    modal run scripts/measure_refusal_gap.py --smoke-test
-    modal run scripts/measure_refusal_gap.py --model Qwen/Qwen2.5-14B-Instruct --smoke-test
-    modal run scripts/measure_refusal_gap.py --harmful-csv path/to/advbench.csv --harmful-col goal
+    modal run refusal_gap/measure_refusal_gap.py --smoke-test
+    modal run refusal_gap/measure_refusal_gap.py --model Qwen/Qwen2.5-14B-Instruct --smoke-test
+    modal run refusal_gap/measure_refusal_gap.py --harmful-csv path/to/advbench.csv --harmful-col goal
 """
 
 import json
@@ -16,10 +16,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.ciphers import ALL_CIPHERS, build_prompt
-from src.data import load_harmful_csv, load_smoke_test_prompts
-from src.modal_app import ChatModel, DEFAULT_MODEL, app
-from src.refusal import is_refusal
+from refusal_gap.ciphers import ALL_CIPHERS, build_prompt
+from refusal_gap.data import load_harmful_csv, load_smoke_test_prompts
+from refusal_gap.modal_app import ChatModel
+from common.modal_infra import DEFAULT_MODEL, app
+from refusal_gap.refusal import is_refusal
 
 
 def looks_like_decode_noise(text: str) -> bool:
@@ -86,7 +87,7 @@ def main(
     harmful_prompts = harmful_prompts[:max_prompts]
 
     if out is None:
-        out = f"results/refusal_gap__{model_slug(model)}.jsonl"
+        out = f"results/refusal_gap/refusal_gap__{model_slug(model)}.jsonl"
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

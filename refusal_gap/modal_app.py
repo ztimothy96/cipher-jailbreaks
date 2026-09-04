@@ -1,30 +1,12 @@
-"""
-Auth: run `pip install modal && modal setup` once (interactive browser login)
-before using anything here.
+"""Modal chat-generation class for the refusal-gap experiment.
+
+Setup: see common/modal_infra.py docstring.
 """
 
 import modal
 
-APP_NAME = "cipher-jailbreaks"
-DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
-# A10G: 24GB was fine for 7B but OOMs on 14B.
-# A100-40GB: bump this again (and the GPU) if we move to a >~20B model.
-GPU = "A100-40GB"
-
-app = modal.App(APP_NAME)
-
-image = modal.Image.debian_slim(python_version="3.11").pip_install(
-    "torch",
-    "transformers>=4.44",
-    "accelerate",
-    "sentencepiece",
-)
-
-# Persists the Hugging Face cache across runs/cold-starts so the ~15GB model
-# download only happens once.
-hf_cache_volume = modal.Volume.from_name("cipher-jailbreaks-hf-cache",
-                                         create_if_missing=True)
-HF_CACHE_PATH = "/root/.cache/huggingface"
+from common.modal_infra import (DEFAULT_MODEL, GPU, HF_CACHE_PATH, app,
+                                 hf_cache_volume, image, load_model)
 
 
 @app.cls(
@@ -46,14 +28,7 @@ class ChatModel:
 
     @modal.enter()
     def load(self):
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_name,
-                                                          dtype=torch.bfloat16,
-                                                          device_map="cuda")
-        self.model.eval()
+        self.model, self.tokenizer = load_model(self.model_name)
 
     @modal.method()
     def generate(self,
