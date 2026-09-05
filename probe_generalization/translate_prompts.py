@@ -47,8 +47,7 @@ def main():
     parser.add_argument("--harmful-col", default="goal")
     parser.add_argument("--harmless-col", default="prompt")
     parser.add_argument("--max-per-class", type=int, default=None)
-    parser.add_argument(
-        "--out", default="results/probe_generalization/translations.jsonl")
+    parser.add_argument("--out", default=None)
     parser.add_argument("--no-resume", action="store_true")
     args = parser.parse_args()
 
@@ -65,6 +64,10 @@ def main():
             "Pass either --smoke-test or both --harmful-csv and --harmless-csv."
         )
 
+    if args.out is None:
+        args.out = ("results/probe_generalization/translations_smoketest.jsonl"
+                   if args.smoke_test else
+                   "results/probe_generalization/translations.jsonl")
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
