@@ -25,7 +25,7 @@ image = modal.Image.debian_slim(python_version="3.11").pip_install(
     "transformers>=4.44",
     "accelerate",
     "sentencepiece",
-)
+).add_local_python_source("common", "refusal_gap", "probe_generalization")
 
 # Persists the Hugging Face cache across runs/cold-starts, and across
 # experiments, so the ~15GB model download only happens once.
