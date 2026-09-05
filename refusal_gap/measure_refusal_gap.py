@@ -167,7 +167,7 @@ def main(
                 "is_refusal":
                 is_refusal(decoded_completion),
             }
-            f.write(json.dumps(record) + "\n")
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
             f.flush(
             )  # durability: survive a crash/dropped connection right after this line
             print(

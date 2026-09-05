@@ -2,3 +2,5 @@ pandas
 modal
 numpy
 scikit-learn
+deepl
+python-dotenv

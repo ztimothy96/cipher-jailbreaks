@@ -1,12 +1,11 @@
-"""Modal classes for the probe-generalization experiment: NLLB translation
-(Phase A language rendering) and activation extraction (Phase A/B). Shares
-the app/image/HF-cache volume with refusal_gap via common/modal_infra.py.
+"""Modal classes for the probe-generalization experiment: activation
+extraction (Phase A/B). Shares the app/image/HF-cache volume with
+refusal_gap via common/modal_infra.py.
 """
 
 import modal
 import numpy as np
 import torch
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from common.modal_infra import (
     DEFAULT_MODEL,
@@ -17,51 +16,6 @@ from common.modal_infra import (
     image,
     load_model,
 )
-
-NLLB_MODEL = "facebook/nllb-200-3.3B"
-
-
-@app.cls(
-    image=image,
-    gpu=GPU,
-    timeout=600,
-    scaledown_window=300,
-    volumes={HF_CACHE_PATH: hf_cache_volume},
-    retries=3,
-)
-class Translator:
-    """Dedicated translation model (not a chat/instruction-tuned LLM)."""
-
-    model_name: str = modal.parameter(default=NLLB_MODEL)
-
-    @modal.enter()
-    def load(self):
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(
-            self.model_name, dtype=torch.bfloat16).to("cuda")
-        self.model.eval()
-
-    @modal.method()
-    def translate(self,
-                  text: str,
-                  src_lang: str,
-                  tgt_lang: str,
-                  max_new_tokens: int = 256) -> str:
-        """src_lang/tgt_lang are FLORES-200 codes, e.g. 'eng_Latn',
-        'zho_Hans' — see probe_generalization/formats.py FLORES_CODES."""
-
-        self.tokenizer.src_lang = src_lang
-        inputs = self.tokenizer(text, return_tensors="pt").to("cuda")
-        forced_bos_token_id = self.tokenizer.convert_tokens_to_ids(tgt_lang)
-
-        with torch.no_grad():
-            output_ids = self.model.generate(
-                **inputs,
-                forced_bos_token_id=forced_bos_token_id,
-                max_new_tokens=max_new_tokens,
-            )
-        return self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
 
 @app.cls(

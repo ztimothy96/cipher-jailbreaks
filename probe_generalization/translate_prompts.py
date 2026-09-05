@@ -1,24 +1,27 @@
-"""Translate the probe dataset into Chinese/Japanese/Spanish via NLLB,
-plus a back-translation round-tripcsimilarity check for flagging likely-bad 
-translations for manual spot-check.
+"""Translate the probe dataset into Chinese/Japanese/Spanish via the DeepL
+API.
+
+QA is manual review of a random sample (probe_generalization/
+sample_for_review.py).
+
+Setup: see probe_generalization/deepl_translate.py (DEEPL_API_KEY / .env).
 
 Usage:
-    modal run probe_generalization/translate_prompts.py --smoke-test
-    modal run probe_generalization/translate_prompts.py \\
+    python3 probe_generalization/translate_prompts.py --smoke-test
+    python3 probe_generalization/translate_prompts.py \\
         --harmful-csv path/to/advbench.csv --harmless-csv path/to/harmless.csv
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common.modal_infra import app
 from probe_generalization.dataset import load_probe_dataset, load_smoke_test_dataset
-from probe_generalization.formats import (FLORES_CODES, TEST_LANGUAGES,
-                                          translation_round_trip_similarity)
-from probe_generalization.modal_app import Translator
+from probe_generalization.deepl_translate import batch_translate, get_translator
+from probe_generalization.formats import LANGUAGE_CODES, TEST_LANGUAGES
 
 
 def load_completed(out_path: Path) -> set[tuple[int, int, str]]:
@@ -36,36 +39,36 @@ def load_completed(out_path: Path) -> set[tuple[int, int, str]]:
     return completed
 
 
-@app.local_entrypoint()
-def main(
-    smoke_test: bool = False,
-    harmful_csv: str = None,
-    harmless_csv: str = None,
-    harmful_col: str = "goal",
-    harmless_col: str = "prompt",
-    max_per_class: int = None,
-    out: str = None,
-    resume: bool = True,
-    similarity_flag_threshold: float = 0.3,
-):
-    if smoke_test:
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--harmful-csv")
+    parser.add_argument("--harmless-csv")
+    parser.add_argument("--harmful-col", default="goal")
+    parser.add_argument("--harmless-col", default="prompt")
+    parser.add_argument("--max-per-class", type=int, default=None)
+    parser.add_argument(
+        "--out", default="results/probe_generalization/translations.jsonl")
+    parser.add_argument("--no-resume", action="store_true")
+    args = parser.parse_args()
+
+    if args.smoke_test:
         requests = load_smoke_test_dataset(
             Path(__file__).resolve().parent.parent / "data" /
             "smoke_test_prompts.json")
-    elif harmful_csv and harmless_csv:
-        requests = load_probe_dataset(harmful_csv, harmless_csv, harmful_col,
-                                      harmless_col, max_per_class)
+    elif args.harmful_csv and args.harmless_csv:
+        requests = load_probe_dataset(args.harmful_csv, args.harmless_csv,
+                                      args.harmful_col, args.harmless_col,
+                                      args.max_per_class)
     else:
         raise SystemExit(
             "Pass either --smoke-test or both --harmful-csv and --harmless-csv."
         )
 
-    if out is None:
-        out = "results/probe_generalization/translations.jsonl"
-    out_path = Path(out)
+    out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not resume and out_path.exists():
+    if args.no_resume and out_path.exists():
         out_path.unlink()
     completed = load_completed(out_path)
     if completed:
@@ -85,70 +88,48 @@ def main(
         )
         return
 
-    print(f"Dispatching {len(index)} translations to Modal ...")
-    translator = Translator()
-    src_lang = FLORES_CODES["english"]
+    translator = get_translator()
+    eng = LANGUAGE_CODES["english"]
 
-    # Forward pass: English -> target language.
-    texts = [req.text for req, _ in index]
-    src_langs = [src_lang] * len(index)
-    tgt_langs = [FLORES_CODES[language] for _, language in index]
-    forward_results = list(
-        translator.translate.map(texts,
-                                 src_langs,
-                                 tgt_langs,
-                                 order_outputs=True,
-                                 return_exceptions=True))
+    # DeepL translates per (source_lang, target_lang) pair in one batched
+    # call each — group the index by target language.
+    print(f"Translating {len(index)} prompts via DeepL ...")
+    by_language: dict[str, list[int]] = {}
+    for i, (_, language) in enumerate(index):
+        by_language.setdefault(language, []).append(i)
 
-    # Retry any failed forward translations.
-    backward_entries = []  # (req, language, translated)
-    for (req, language), translated in zip(index, forward_results):
-        if isinstance(translated, Exception):
-            print(f"[{req.id}] {language:10s} FAILED (forward translation): "
-                  f"{translated!r} — will retry on next --resume run")
-            continue
-        backward_entries.append((req, language, translated))
-
-    # Back-translation: target language -> English, for the quality check.
-    if backward_entries:
-        back_texts = [t for _, _, t in backward_entries]
-        back_src_langs = [
-            FLORES_CODES[lang] for _, lang, _ in backward_entries
-        ]
-        back_tgt_langs = [src_lang] * len(backward_entries)
-        backward_results = list(
-            translator.translate.map(back_texts,
-                                     back_src_langs,
-                                     back_tgt_langs,
-                                     order_outputs=True,
-                                     return_exceptions=True))
-    else:
-        backward_results = []
+    results: list = [None] * len(index)
+    for language, positions in by_language.items():
+        texts = [index[i][0].text for i in positions]
+        translated = batch_translate(translator, texts, eng,
+                                     LANGUAGE_CODES[language])
+        for pos, t in zip(positions, translated):
+            results[pos] = t
 
     with open(out_path, "a") as f:
-        for (req, language, translated), back in zip(backward_entries,
-                                                     backward_results):
-            if isinstance(back, Exception):
-                print(f"[{req.id}] {language:10s} FAILED (back-translation): "
-                      f"{back!r} — will retry on next --resume run")
+        for (req, language), translated in zip(index, results):
+            if isinstance(translated, Exception):
+                print(f"[{req.id}] {language:10s} FAILED: {translated!r} — "
+                      f"will retry on next run")
                 continue
 
-            similarity = translation_round_trip_similarity(req.text, back)
-            needs_review = similarity < similarity_flag_threshold
+            has_unk_token = "<unk>" in translated
             record = {
                 "prompt_id": req.id,
                 "label": req.label,
                 "language": language,
                 "original": req.text,
                 "translated": translated,
-                "back_translated": back,
-                "round_trip_similarity": similarity,
-                "needs_review": needs_review,
+                "has_unk_token": has_unk_token,
+                "needs_review": has_unk_token,
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
             f.flush()
-            flag = " NEEDS_REVIEW" if needs_review else ""
-            print(
-                f"[{req.id}] {language:10s} similarity={similarity:.2f}{flag}")
+            flag = " NEEDS_REVIEW (unk token)" if has_unk_token else ""
+            print(f"[{req.id}] {language:10s} translated{flag}")
 
     print(f"\nWrote results to {out_path}")
+
+
+if __name__ == "__main__":
+    main()
