@@ -3,4 +3,6 @@ modal
 numpy
 scikit-learn
 deepl
+openai
 python-dotenv
+matplotlib
