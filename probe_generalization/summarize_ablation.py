@@ -1,16 +1,9 @@
 """Summarizes ablate.py's output into a refusal-rate-per-layer table, ranked
 by drop from baseline — the layers most causally load-bearing for refusal
-sort to the top.
+sort to the top. Plots the results as a line chart.
 
 Can use either the keyword scan (refusal_gap.refusal.is_refusal) or the
-LLM-judge label (judge_ablation.py / groq_judge_ablation.py) as the metric
-— see --metric. Whichever is used, the choice is never left implicit in the
-output: it's a "metric" column in the CSV *and* part of the output
-filename (ablation_summary__{model}__{metric}.csv), so a table or plot
-found later is self-describing without needing this script's stdout.
---metric auto (the default) picks judge when a judged file exists,
-otherwise keyword, and still records which one it picked into both places
-— "auto" only affects the choice, never leaves it unrecorded.
+LLM-judge label (groq_judge_ablation.py) as the metric.
 
 Usage:
     python3 probe_generalization/summarize_ablation.py \\
@@ -25,24 +18,14 @@ from pathlib import Path
 
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 
 def model_slug(model_name: str) -> str:
     return model_name.replace("/", "__")
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", required=True)
-    parser.add_argument("--results-dir",
-                        default="results/probe_generalization")
-    parser.add_argument(
-        "--metric",
-        choices=["auto", "keyword", "judge"],
-        default="auto",
-        help="'auto' uses the judge label if ablation_judged__*.jsonl "
-        "exists, else falls back to the keyword scan.")
-    args = parser.parse_args()
-
+def save_ablation_results(args: argparse.Namespace):
     slug = model_slug(args.model)
     judged_path = Path(args.results_dir) / f"ablation_judged__{slug}.jsonl"
     keyword_path = Path(args.results_dir) / f"ablation__{slug}.jsonl"
@@ -112,6 +95,77 @@ def main():
         args.results_dir) / f"ablation_summary__{slug}__{metric_name}.csv"
     out.to_csv(out_path, index=False)
     print(f"\nSaved {out_path} (metric={metric_name})")
+
+
+def plot_ablation_results(args: argparse.Namespace):
+    slug = model_slug(args.model)
+    if args.metric == "auto":
+        judge_path = Path(
+            args.results_dir) / f"ablation_summary__{slug}__judge.csv"
+        metric_name = "judge" if judge_path.exists() else "keyword"
+    else:
+        metric_name = args.metric
+    csv_path = Path(
+        args.results_dir) / f"ablation_summary__{slug}__{metric_name}.csv"
+    if not csv_path.exists():
+        raise SystemExit(f"Missing {csv_path} — run summarize_ablation.py "
+                         f"--metric {metric_name} first.")
+    df = pd.read_csv(csv_path)
+
+    COLORS = {
+        "english": "#2a78d6",
+        "chinese": "#eb6834",
+        "japanese": "#1baf7a",
+        "spanish": "#eda100",
+    }
+    fig, ax = plt.subplots(figsize=(9, 5), dpi=150)
+    for lang, group in df.groupby("language"):
+        group = group.sort_values("layer")
+        color = COLORS.get(lang, "#888888")
+        ax.plot(group["layer"],
+                group["refusal_rate"],
+                label=f"{lang.capitalize()} (ablated)",
+                color=color,
+                linewidth=2,
+                marker="o",
+                markersize=4)
+        ax.axhline(group["baseline_refusal_rate"].iloc[0],
+                   color=color,
+                   linewidth=1,
+                   linestyle="--",
+                   alpha=0.6)
+
+    ax.set_xlabel("Ablated layer")
+    ax.set_ylabel("Refusal rate")
+    ax.set_title(f"Refusal rate under single-layer ablation — {args.model}\n"
+                 f"metric={metric_name} (dashed = unablated baseline, "
+                 f"same color per language)")
+    ax.set_ylim(-0.02, 1.02)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+
+    out_path = Path(
+        args.results_dir) / f"ablation_summary__{slug}__{metric_name}.png"
+    fig.savefig(out_path)
+    print(f"Saved {out_path} (metric={metric_name})")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--results-dir",
+                        default="results/probe_generalization")
+    parser.add_argument(
+        "--metric",
+        choices=["auto", "keyword", "judge"],
+        default="auto",
+        help="'auto' uses the judge label if ablation_judged__*.jsonl "
+        "exists, else falls back to the keyword scan.")
+    args = parser.parse_args()
+
+    save_ablation_results(args)
+    plot_ablation_results(args)
 
 
 if __name__ == "__main__":
