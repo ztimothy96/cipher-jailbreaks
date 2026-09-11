@@ -40,7 +40,10 @@ def plot_decode_scores(df: pd.DataFrame, out_path: Path) -> None:
                     tick_labels=order,
                     patch_artist=True,
                     widths=0.6,
-                    medianprops={"color": _MEDIAN_COLOR, "linewidth": 2},
+                    medianprops={
+                        "color": _MEDIAN_COLOR,
+                        "linewidth": 2
+                    },
                     whiskerprops={"color": _AXIS_COLOR},
                     capprops={"color": _AXIS_COLOR},
                     flierprops={
@@ -86,22 +89,30 @@ def model_slug(model_name: str) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
-    parser.add_argument("--results-dir", default="results/probe_generalization")
+    parser.add_argument("--results-dir",
+                        default="results/probe_generalization")
     parser.add_argument(
-        "--smoke-test", action="store_true",
+        "--smoke-test",
+        action="store_true",
         help="Read the _smoketest output file — pass this if you ran "
         "cipher_decode_check.py with --smoke-test, same filename suffix "
         "convention as that script.")
     parser.add_argument(
-        "--path", default=None,
+        "--path",
+        default=None,
         help="Explicit path override, if neither --model's default nor "
         "--smoke-test's suffix match your output file's actual name.")
     parser.add_argument(
-        "--show-worst", type=int, default=3,
+        "--show-worst",
+        type=int,
+        default=3,
         help="Print this many lowest-scoring (original, completion) pairs "
         "per cipher, to see what a bad decode actually looks like.")
     parser.add_argument(
-        "--plot", nargs="?", const="", default=None,
+        "--plot",
+        nargs="?",
+        const="",
+        default=None,
         help="Also save a box plot comparing decode_score across ciphers. "
         "Optionally pass a path; default is "
         "'<results-dir>/cipher_decode_check<suffix>__<model>.png'.")
@@ -138,13 +149,12 @@ def main():
                 print(f"      completion={r['completion']!r}")
         print()
 
-    if args.plot is not None:
-        if args.plot:
-            plot_path = Path(args.plot)
-        else:
-            plot_path = path.with_suffix(".png")
-        plot_decode_scores(df, plot_path)
-        print(f"Wrote plot to {plot_path}")
+    if args.plot:
+        plot_path = Path(args.plot)
+    else:
+        plot_path = path.with_suffix(".png")
+    plot_decode_scores(df, plot_path)
+    print(f"Wrote plot to {plot_path}")
 
 
 if __name__ == "__main__":

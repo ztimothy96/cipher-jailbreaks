@@ -57,6 +57,11 @@ CIPHER_RULES = {
     "In Snakespeak, every occurrence of the letters s, z, c, and x (in "
     "either case) is replaced with 6 repeated copies of that same "
     "letter, and every other character is left unchanged. ",
+    "middle_swap":
+    "In Middle-Swap text, the first and last letter of every word stay "
+    "in place, and the letters between them are swapped two at a time "
+    "(the 1st and 2nd middle letters swap, the 3rd and 4th swap, and so "
+    "on; an unpaired last middle letter stays put). ",
 }
 
 _EXAMPLE_PLAINTEXT = "Hello, how are you?"
@@ -70,6 +75,30 @@ def decode_score(original: str, completion: str) -> float:
     return difflib.SequenceMatcher(None,
                                    original.strip().lower(),
                                    completion.strip().lower()).ratio()
+
+
+def _cipher_rank(name: str) -> int:
+    try:
+        return CIPHER_NAMES.index(name)
+    except ValueError:
+        return len(CIPHER_NAMES)
+
+
+def sort_output_file(out_path: Path) -> None:
+    """Rewrites out_path with rows in a fixed (model, prompt_id, label,
+    cipher) order, so results from different resumed runs — which append
+    in whatever order they were dispatched — line up consistently."""
+    if not out_path.exists():
+        return
+    with open(out_path) as f:
+        records = [json.loads(line) for line in f if line.strip()]
+    records.sort(key=lambda r: (r.get("model", ""), r["prompt_id"], r[
+        "label"], _cipher_rank(r["cipher"])))
+    tmp_path = out_path.with_suffix(out_path.suffix + ".tmp")
+    with open(tmp_path, "w") as f:
+        for r in records:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    tmp_path.replace(out_path)
 
 
 def load_completed(out_path: Path,
@@ -153,6 +182,7 @@ def main(
     if not index:
         print("Nothing left to do — all requested (prompt, cipher) pairs "
               "are already in the output file.")
+        sort_output_file(out_path)
         return
 
     print(f"Dispatching {len(index)} decode-screen generations to Modal "
@@ -192,7 +222,9 @@ def main(
             f.flush()
             print(f"[{req.id}] {cipher_name:10s} decode_score={score:.3f}")
 
-    print(f"\nWrote results to {out_path}")
+    sort_output_file(out_path)
+    print(f"\nWrote results to {out_path} (sorted by prompt_id, label, "
+          f"cipher)")
 
 
 if __name__ == "__main__":
