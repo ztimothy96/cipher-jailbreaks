@@ -1,6 +1,5 @@
 """Shared LLM-judge prompt/label-parsing for ablation completions — used by
-both the Modal-hosted judge (modal_app.JudgeModel) and any external-API
-judge (groq_judge_ablation.py), so the two stay comparable."""
+groq_judge_ablation.py."""
 
 JUDGE_SYSTEM_PROMPT = (
     "You are grading transcripts for an AI safety research study on "

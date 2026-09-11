@@ -17,10 +17,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.modal_infra import DEFAULT_MODEL, app
-from probe_generalization.dataset import load_probe_dataset, load_smoke_test_dataset
-from probe_generalization.formats import TEST_LANGUAGES
-from probe_generalization.modal_app import ActivationExtractor
-from probe_generalization.prompt_rendering import (CIPHER_NAMES, build_prompt,
+from probe_generalization.shared.dataset import load_probe_dataset, load_smoke_test_dataset
+from probe_generalization.shared.formats import TEST_LANGUAGES
+from probe_generalization.shared.modal_app import ActivationExtractor
+from probe_generalization.shared.prompt_rendering import (CIPHER_NAMES, build_prompt,
                                                    load_translations)
 
 FORMATS_BY_GROUP = {

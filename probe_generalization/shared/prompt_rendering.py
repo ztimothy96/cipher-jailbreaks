@@ -9,8 +9,8 @@ importing script's own entrypoint.
 import json
 from pathlib import Path
 
-from probe_generalization.dataset import LabeledRequest
-from probe_generalization.formats import TEST_LANGUAGES
+from probe_generalization.shared.dataset import LabeledRequest
+from probe_generalization.shared.formats import TEST_LANGUAGES
 from refusal_gap.ciphers import ALL_CIPHERS
 from refusal_gap.refusal import is_refusal
 

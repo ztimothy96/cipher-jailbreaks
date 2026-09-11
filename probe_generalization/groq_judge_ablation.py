@@ -28,8 +28,8 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from probe_generalization.judge_prompt import (JUDGE_SYSTEM_PROMPT,
-                                               judge_user_turn, parse_label)
+from probe_generalization.shared.judge_prompt import (JUDGE_SYSTEM_PROMPT,
+                                                    judge_user_turn, parse_label)
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MAX_RETRIES = 3
