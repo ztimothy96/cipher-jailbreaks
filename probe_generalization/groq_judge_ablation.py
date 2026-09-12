@@ -29,7 +29,8 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from probe_generalization.shared.judge_prompt import (JUDGE_SYSTEM_PROMPT,
-                                                    judge_user_turn, parse_label)
+                                                      judge_user_turn,
+                                                      parse_label)
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MAX_RETRIES = 3
@@ -208,6 +209,7 @@ def main():
     ]
     if not to_judge:
         print("Nothing left to judge.")
+        sort_output_file(out_path)
         return
 
     # One client per worker thread — the openai SDK's HTTP client isn't

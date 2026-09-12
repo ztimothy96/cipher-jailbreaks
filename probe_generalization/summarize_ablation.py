@@ -47,6 +47,13 @@ def save_ablation_results(args: argparse.Namespace):
     if "language" not in df.columns:
         df["language"] = "english"
     df["language"] = df["language"].fillna("english")
+    if args.max_prompts is not None:
+        n_before = len(df)
+        df = df[df["prompt_id"] < args.max_prompts]
+        print(f"Restricted to prompt_id < {args.max_prompts}: "
+              f"{len(df)}/{n_before} records (keeps language curves "
+              f"comparable when some languages are judged on more "
+              f"prompts than others).\n")
 
     rows = []
     for lang, lang_df in df.groupby("language"):
@@ -111,6 +118,8 @@ def plot_ablation_results(args: argparse.Namespace):
         raise SystemExit(f"Missing {csv_path} — run summarize_ablation.py "
                          f"--metric {metric_name} first.")
     df = pd.read_csv(csv_path)
+    if args.even_layers_only:
+        df = df[df["layer"] % 2 == 0]
 
     COLORS = {
         "english": "#2a78d6",
@@ -145,10 +154,13 @@ def plot_ablation_results(args: argparse.Namespace):
     ax.legend(loc="lower right")
     fig.tight_layout()
 
+    suffix = "__even_layers" if args.even_layers_only else ""
     out_path = Path(
-        args.results_dir) / f"ablation_summary__{slug}__{metric_name}.png"
+        args.results_dir
+    ) / f"ablation_summary__{slug}__{metric_name}{suffix}.png"
     fig.savefig(out_path)
-    print(f"Saved {out_path} (metric={metric_name})")
+    print(f"Saved {out_path} (metric={metric_name}, "
+          f"even_layers_only={args.even_layers_only})")
 
 
 def main():
@@ -162,6 +174,17 @@ def main():
         default="auto",
         help="'auto' uses the judge label if ablation_judged__*.jsonl "
         "exists, else falls back to the keyword scan.")
+    parser.add_argument(
+        "--max-prompts",
+        type=int,
+        default=None,
+        help="Restrict to prompt_id < this many, so languages judged on "
+        "different numbers of prompts are still compared on the same "
+        "shared subset.")
+    parser.add_argument(
+        "--even-layers-only",
+        action="store_true",
+        help="Plot only even-numbered ablated layers.")
     args = parser.parse_args()
 
     save_ablation_results(args)
