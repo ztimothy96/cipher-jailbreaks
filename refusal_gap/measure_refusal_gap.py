@@ -8,6 +8,8 @@ Usage:
     modal run refusal_gap/measure_refusal_gap.py --smoke-test
     modal run refusal_gap/measure_refusal_gap.py --model Qwen/Qwen2.5-14B-Instruct --smoke-test
     modal run refusal_gap/measure_refusal_gap.py --harmful-csv path/to/advbench.csv --harmful-col goal
+    modal run refusal_gap/measure_refusal_gap.py --harmful-csv path/to/advbench.csv \\
+        --ciphers pig_latin,leetspeak,letter_spaced,middle_swap,snakespeak
 """
 
 import json
@@ -72,7 +74,18 @@ def main(
     model: str = DEFAULT_MODEL,
     out: str = None,
     resume: bool = True,
+    ciphers: str = None,
 ):
+    if ciphers is not None:
+        wanted = ciphers.split(",")
+        unknown = set(wanted) - set(ALL_CIPHERS)
+        if unknown:
+            raise SystemExit(f"Unknown cipher(s): {unknown}. Valid: "
+                             f"{sorted(ALL_CIPHERS)}")
+        selected_ciphers = {name: ALL_CIPHERS[name] for name in wanted}
+    else:
+        selected_ciphers = ALL_CIPHERS
+
     if smoke_test:
         prompts = load_smoke_test_prompts(
             Path(__file__).resolve().parent.parent / "data" /
@@ -102,7 +115,7 @@ def main(
     # Build the full (prompt, cipher) index, then drop anything already done.
     index = []
     for i, request in enumerate(harmful_prompts):
-        for cipher_name, cipher in ALL_CIPHERS.items():
+        for cipher_name, cipher in selected_ciphers.items():
             if (i, cipher_name) in completed:
                 continue
             system_prompt, encoded_request = build_prompt(cipher, request)
