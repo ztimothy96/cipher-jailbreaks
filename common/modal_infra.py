@@ -41,6 +41,12 @@ CANDIDATE_MODELS = [
 ]
 
 
+def model_slug(model_name: str) -> str:
+    """A model name as a filesystem/filename-safe slug, e.g. for result
+    file names: 'Qwen/Qwen2.5-7B-Instruct' -> 'Qwen__Qwen2.5-7B-Instruct'."""
+    return model_name.replace("/", "__")
+
+
 def load_model(model_name: str):
     """Load a causal LM + tokenizer onto CUDA. Shared by any Modal class
     that needs the base model (generation, activation extraction, ...)."""

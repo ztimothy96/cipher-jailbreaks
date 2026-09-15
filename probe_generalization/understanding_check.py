@@ -25,15 +25,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.chat_model import ChatModel
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
-from common.modal_infra import DEFAULT_MODEL, app
+from common.modal_infra import DEFAULT_MODEL, app, model_slug
 from probe_generalization.shared.prompt_rendering import (ALL_FORMATS, build_prompt,
                                                         is_refusal_multilingual,
                                                         load_translations,
                                                         looks_like_noise)
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def load_completed(out_path: Path,

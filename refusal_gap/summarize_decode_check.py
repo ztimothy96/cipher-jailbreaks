@@ -10,11 +10,16 @@ Usage:
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.modal_infra import model_slug
 
 # Single sequential hue (blue, mid-dark step) — these are all the same
 # measure (decode_score) grouped by category, not distinct series, so one
@@ -80,10 +85,6 @@ def plot_decode_scores(df: pd.DataFrame, out_path: Path) -> None:
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def main():

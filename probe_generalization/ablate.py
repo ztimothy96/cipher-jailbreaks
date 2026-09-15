@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.data import load_harmful_csv
 from common.dataset import LabeledRequest
-from common.modal_infra import DEFAULT_MODEL, app
+from common.modal_infra import DEFAULT_MODEL, app, model_slug
 from probe_generalization.shared.modal_app import AblationChatModel
 from probe_generalization.shared.prompt_rendering import (TEST_LANGUAGES,
                                                         build_prompt,
@@ -28,10 +28,6 @@ from probe_generalization.shared.prompt_rendering import (TEST_LANGUAGES,
 
 BASELINE = "baseline"
 ALL_LANGUAGES = ["english"] + TEST_LANGUAGES
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def load_completed(out_path: Path,

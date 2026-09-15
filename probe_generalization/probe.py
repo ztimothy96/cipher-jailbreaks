@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -21,13 +22,13 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.modal_infra import model_slug
+
 SEED = 0
 TEST_SIZE = 0.2
 ALL_LANGUAGES = ["chinese", "japanese", "spanish"]
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def load_npz(activations_dir: Path, model: str, fmt: str) -> dict:

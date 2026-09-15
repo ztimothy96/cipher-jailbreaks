@@ -14,15 +14,16 @@ Usage:
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 import matplotlib.pyplot as plt
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
+from common.modal_infra import model_slug
 
 
 def save_ablation_results(args: argparse.Namespace):

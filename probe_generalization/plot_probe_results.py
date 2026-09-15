@@ -7,10 +7,15 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.modal_infra import model_slug
 
 COLORS = {
     "english": "#2a78d6",
@@ -18,10 +23,6 @@ COLORS = {
     "japanese": "#1baf7a",
     "spanish": "#eda100",
 }
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def main():

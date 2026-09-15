@@ -23,7 +23,7 @@ from common.chat_model import ChatModel
 from common.ciphers import ALL_CIPHERS
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from common.jsonl_output import sort_output_file
-from common.modal_infra import DEFAULT_MODEL, app
+from common.modal_infra import DEFAULT_MODEL, app, model_slug
 
 CIPHER_NAMES = [name for name in ALL_CIPHERS if name != "plaintext"]
 
@@ -65,10 +65,6 @@ CIPHER_RULES = {
 }
 
 _EXAMPLE_PLAINTEXT = "Hello, how are you?"
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def decode_score(original: str, completion: str) -> float:

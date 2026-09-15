@@ -22,7 +22,7 @@ from common.chat_model import ChatModel
 from common.ciphers import ALL_CIPHERS, build_prompt
 from common.data import load_harmful_csv, load_smoke_test_prompts
 from common.jsonl_output import sort_output_file
-from common.modal_infra import DEFAULT_MODEL, app
+from common.modal_infra import DEFAULT_MODEL, app, model_slug
 from common.refusal import is_refusal
 
 
@@ -36,10 +36,6 @@ def looks_like_decode_noise(text: str) -> bool:
     inspection of decoded_completion in the output file, not automatically."""
     letters = sum(c.isalpha() for c in text)
     return len(text.strip()) == 0 or letters / max(len(text), 1) < 0.3
-
-
-def model_slug(model_name: str) -> str:
-    return model_name.replace("/", "__")
 
 
 def load_completed(out_path: Path, model_name: str) -> set[tuple[int, str]]:
