@@ -22,7 +22,7 @@ from common.chat_model import ChatModel
 from common.ciphers import ALL_CIPHERS, build_prompt
 from common.data import load_harmful_csv, load_smoke_test_prompts
 from common.jsonl_output import sort_output_file
-from common.modal_infra import DEFAULT_MODEL, app, model_slug
+from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
 from common.refusal import is_refusal
 
 
@@ -132,7 +132,7 @@ def main(
     print(
         f"Dispatching {len(index)} generations to Modal (model={model}) via .map() ..."
     )
-    chat_model = ChatModel(model_name=model)
+    chat_model = ChatModel.with_options(gpu=gpu_for(model))(model_name=model)
 
     system_prompts = [row[2] for row in index]
     user_turns = [row[3] for row in index]

@@ -100,7 +100,8 @@ def main(
     out_dir_path = Path(out_dir) / model_slug(model)
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
-    extractor = ActivationExtractor(model_name=model)
+    extractor = ActivationExtractor.with_options(gpu=gpu_for(model))(
+        model_name=model)
 
     for fmt in formats:
         out_path = out_dir_path / f"{fmt}.npz"

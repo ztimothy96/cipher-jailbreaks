@@ -9,8 +9,8 @@ import torch
 
 from common.chat_model import render_input_ids
 from common.modal_infra import (
+    DEFAULT_GPU,
     DEFAULT_MODEL,
-    GPU,
     HF_CACHE_PATH,
     app,
     hf_cache_volume,
@@ -21,7 +21,9 @@ from common.modal_infra import (
 
 @app.cls(
     image=image,
-    gpu=GPU,
+    # Class-level default only — see common/chat_model.py's ChatModel for
+    # why callers should use .with_options(gpu=gpu_for(model_name)) instead.
+    gpu=DEFAULT_GPU,
     timeout=600,
     scaledown_window=300,
     volumes={HF_CACHE_PATH: hf_cache_volume},
@@ -67,7 +69,9 @@ def _make_ablation_hook(direction):
 
 @app.cls(
     image=image,
-    gpu=GPU,
+    # Class-level default only — see common/chat_model.py's ChatModel for
+    # why callers should use .with_options(gpu=gpu_for(model_name)) instead.
+    gpu=DEFAULT_GPU,
     timeout=600,
     scaledown_window=300,
     volumes={HF_CACHE_PATH: hf_cache_volume},

@@ -128,8 +128,9 @@ def main(
 
     print(f"Dispatching {len(index)} generations to Modal (model={model}, "
           f"{len(candidate_layers)} layers + baseline, "
-          f"{len(requests)} prompts, languages={languages}) ...")
-    chat_model = AblationChatModel(model_name=model)
+          f"{len(requests)} prompts, formats={formats}) ...")
+    chat_model = AblationChatModel.with_options(gpu=gpu_for(model))(
+        model_name=model)
 
     system_prompts = [row[3] for row in index]
     user_turns = [row[4] for row in index]

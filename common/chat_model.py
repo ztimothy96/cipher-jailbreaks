@@ -5,8 +5,8 @@ Setup: see common/modal_infra.py docstring.
 
 import modal
 
-from common.modal_infra import (DEFAULT_MODEL, GPU, HF_CACHE_PATH, app,
-                                 hf_cache_volume, image, load_model)
+from common.modal_infra import (DEFAULT_GPU, DEFAULT_MODEL, HF_CACHE_PATH, app,
+                                hf_cache_volume, image, load_model)
 
 
 def render_input_ids(tokenizer, system_prompt: str, user_turn: str):
@@ -37,7 +37,10 @@ def render_input_ids(tokenizer, system_prompt: str, user_turn: str):
 
 @app.cls(
     image=image,
-    gpu=GPU,
+    # Class-level default only — actual instances should be created via
+    # ChatModel.with_options(gpu=gpu_for(model_name))(model_name=model_name).
+    # See common/modal_infra.py's GPU_BY_MODEL).
+    gpu=DEFAULT_GPU,
     timeout=600,
     scaledown_window=300,
     volumes={HF_CACHE_PATH: hf_cache_volume},

@@ -25,11 +25,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.chat_model import ChatModel
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
-from common.modal_infra import DEFAULT_MODEL, app, model_slug
-from probe_generalization.shared.prompt_rendering import (ALL_FORMATS, build_prompt,
-                                                        is_refusal_multilingual,
-                                                        load_translations,
-                                                        looks_like_noise)
+from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
+from probe_generalization.shared.prompt_rendering import (
+    ALL_FORMATS, build_prompt, is_refusal_multilingual, load_translations,
+    looks_like_noise)
 
 
 def load_completed(out_path: Path,
@@ -45,7 +44,8 @@ def load_completed(out_path: Path,
             record = json.loads(line)
             if record.get("model") != model_name:
                 continue
-            completed.add((record["prompt_id"], record["label"], record["format"]))
+            completed.add(
+                (record["prompt_id"], record["label"], record["format"]))
     return completed
 
 
@@ -59,7 +59,8 @@ def main(
     max_per_class: int = None,
     model: str = DEFAULT_MODEL,
     formats: str = None,  # comma-separated subset of ALL_FORMATS; default = all
-    max_new_tokens: int = 64,  # a coherence check needs a sentence, not a full answer
+    max_new_tokens:
+    int = 64,  # a coherence check needs a sentence, not a full answer
     translations_path: str = None,
     out: str = None,
     resume: bool = True,
@@ -83,9 +84,8 @@ def main(
 
     if translations_path is None:
         translations_path = (
-            "results/probe_generalization/translations_smoketest.jsonl"
-            if smoke_test else
-            "results/probe_generalization/translations.jsonl")
+            "results/probe_generalization/translations_smoketest.jsonl" if
+            smoke_test else "results/probe_generalization/translations.jsonl")
     translations = load_translations(Path(translations_path))
 
     if out is None:
@@ -120,7 +120,7 @@ def main(
         return
 
     print(f"Dispatching {len(index)} generations to Modal (model={model}) ...")
-    chat_model = ChatModel(model_name=model)
+    chat_model = ChatModel.with_options(gpu=gpu_for(model))(model_name=model)
 
     system_prompts = [row[2] for row in index]
     user_turns = [row[3] for row in index]
@@ -133,7 +133,8 @@ def main(
                                           order_outputs=True,
                                           return_exceptions=True)
 
-        for (req, fmt, system_prompt, encoded), completion in zip(index, results):
+        for (req, fmt, system_prompt,
+             encoded), completion in zip(index, results):
             if isinstance(completion, Exception):
                 print(f"[{req.id}] {fmt:10s} FAILED after retries: "
                       f"{completion!r} — will retry on next --resume run")
@@ -152,7 +153,9 @@ def main(
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
             f.flush()
-            print(f"[{req.id}] {fmt:10s} understanding_ok="
-                  f"{record['understanding_ok']!s:5} refusal={record['is_refusal']!s:5}")
+            print(
+                f"[{req.id}] {fmt:10s} understanding_ok="
+                f"{record['understanding_ok']!s:5} refusal={record['is_refusal']!s:5}"
+            )
 
     print(f"\nWrote results to {out_path}")

@@ -23,7 +23,7 @@ from common.chat_model import ChatModel
 from common.ciphers import ALL_CIPHERS
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from common.jsonl_output import sort_output_file
-from common.modal_infra import DEFAULT_MODEL, app, model_slug
+from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
 
 CIPHER_NAMES = [name for name in ALL_CIPHERS if name != "plaintext"]
 
@@ -163,7 +163,7 @@ def main(
 
     print(f"Dispatching {len(index)} decode-screen generations to Modal "
           f"(model={model}) ...")
-    chat_model = ChatModel(model_name=model)
+    chat_model = ChatModel.with_options(gpu=gpu_for(model))(model_name=model)
 
     system_prompts = [row[2] for row in index]
     user_turns = [row[3] for row in index]

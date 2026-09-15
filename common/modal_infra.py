@@ -14,9 +14,28 @@ import modal
 
 APP_NAME = "cipher-jailbreaks"
 DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
-# A10G: 24GB was fine for 7B but OOMs on 14B.
-# A100-40GB: bump this again (and the GPU) if we move to a >~20B model.
-GPU = "A100-40GB"
+GPU_BY_MODEL = {
+    "meta-llama/Meta-Llama-3-8B-Instruct": "A10G",
+    "Qwen/Qwen2.5-7B-Instruct": "A10G",
+    "google/gemma-2-9b-it": "A10G",
+    "mistralai/Mistral-7B-Instruct-v0.3": "A10G",
+    "Qwen/Qwen2.5-14B-Instruct": "A100-40GB",
+    "Qwen/Qwen2.5-32B-Instruct": "A100-80GB",
+}
+# Fallback for an unlisted model
+DEFAULT_GPU = "A100-40GB"
+
+
+def gpu_for(model_name: str) -> str:
+    """GPU tier for a given model. See GPU_BY_MODEL above."""
+    gpu = GPU_BY_MODEL.get(model_name)
+    if gpu is None:
+        print(f"Warning: no GPU tier configured for '{model_name}' in "
+              f"common/modal_infra.py's GPU_BY_MODEL — defaulting to "
+              f"{DEFAULT_GPU}. Add an entry once you know what fits.")
+        return DEFAULT_GPU
+    return gpu
+
 
 app = modal.App(APP_NAME)
 
@@ -36,6 +55,7 @@ CANDIDATE_MODELS = [
     "meta-llama/Meta-Llama-3-8B-Instruct",
     "Qwen/Qwen2.5-7B-Instruct",
     "Qwen/Qwen2.5-14B-Instruct",
+    "Qwen/Qwen2.5-32B-Instruct",
     "google/gemma-2-9b-it",
     "mistralai/Mistral-7B-Instruct-v0.3",
 ]
