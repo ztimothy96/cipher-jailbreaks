@@ -1,16 +1,23 @@
-"""Step A3/A4 — probe training and cross-language evaluation.
+"""Step A3/A4 + B3 — probe training and cross-format evaluation.
 
 Trains one diff-of-means direction per (model, layer) on a
 held-out 80/20 stratified split of the English activations, evaluates AUROC
-on the held-out English test split and zero-shot on the other languages'
-activation sets using the same direction.
+on the held-out English test split and zero-shot on other formats'
+activation sets (languages and/or ciphers) using the same direction.
 
-Persists each layer's probe weights (not just AUROC numbers) — Phase B
-(probe.py's cipher counterpart, not yet written) reuses these exact probes
-rather than retraining, per docs/probe-generalization-plan.md Step B3.
+Retraining is deterministic (fixed SEED, pure local numpy over cached
+activations, no GPU/Modal involved) — a fresh run reproduces the exact same
+probe weights already saved by a prior run, so this doubles as Step B3
+("zero-shot AUROC of the *same* probes ... no retraining", per
+docs/probe-generalization-plan.md): evaluating a new format here doesn't
+need to load a previously-saved probe from disk to satisfy that.
 
 Usage:
     python3 probe_generalization/probe.py --model Qwen/Qwen2.5-7B-Instruct
+    python3 probe_generalization/probe.py --model Qwen/Qwen2.5-7B-Instruct \\
+        --formats letter_spaced
+    python3 probe_generalization/probe.py --model Qwen/Qwen2.5-7B-Instruct \\
+        --formats chinese,japanese,spanish,letter_spaced
 """
 
 import argparse
@@ -25,14 +32,16 @@ from sklearn.model_selection import train_test_split
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.modal_infra import model_slug
+from probe_generalization.shared.prompt_rendering import ALL_FORMATS, FORMAT_GROUP
 
 SEED = 0
 TEST_SIZE = 0.2
-ALL_LANGUAGES = ["chinese", "japanese", "spanish"]
+DEFAULT_FORMATS = ["chinese", "japanese", "spanish"]
 
 
-def load_npz(activations_dir: Path, model: str, fmt: str) -> dict:
-    path = activations_dir / model_slug(model) / f"{fmt}.npz"
+def load_npz(activations_root: Path, fmt: str, model: str) -> dict:
+    path = activations_root / f"activations__{FORMAT_GROUP[fmt]}" / model_slug(
+        model) / f"{fmt}.npz"
     if not path.exists():
         raise SystemExit(f"Missing {path} — run extract_activations.py first.")
     data = np.load(path)
@@ -47,26 +56,29 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
     parser.add_argument(
-        "--activations-dir",
-        default="results/probe_generalization/activations__languages")
+        "--activations-root",
+        default="results/probe_generalization",
+        help="Parent of the activations__languages/activations__ciphers "
+        "directories written by extract_activations.py.")
     parser.add_argument("--out-dir", default="results/probe_generalization")
     parser.add_argument(
-        "--languages",
-        default=",".join(ALL_LANGUAGES),
-        help="Comma-separated subset to evaluate, e.g. while others are "
+        "--formats",
+        default=",".join(DEFAULT_FORMATS),
+        help="Comma-separated subset of languages/ciphers to zero-shot "
+        "evaluate against the English-trained probe, e.g. while others are "
         "still being extracted.")
     args = parser.parse_args()
-    languages = args.languages.split(",")
-    unknown = set(languages) - set(ALL_LANGUAGES)
+    formats = args.formats.split(",")
+    unknown = set(formats) - (set(ALL_FORMATS) - {"english"})
     if unknown:
-        raise SystemExit(
-            f"Unknown language(s): {unknown}. Valid: {ALL_LANGUAGES}")
+        raise SystemExit(f"Unknown format(s): {unknown}. Valid: "
+                         f"{sorted(set(ALL_FORMATS) - {'english'})}")
 
-    activations_dir = Path(args.activations_dir)
-    english = load_npz(activations_dir, args.model, "english")
+    activations_root = Path(args.activations_root)
+    english = load_npz(activations_root, "english", args.model)
     others = {
-        lang: load_npz(activations_dir, args.model, lang)
-        for lang in languages
+        fmt: load_npz(activations_root, fmt, args.model)
+        for fmt in formats
     }
 
     X_en, y_en = english["activations"], english["labels"]
@@ -110,21 +122,21 @@ def main():
             "n": len(test_idx),
         })
 
-        for lang, data in others.items():
-            X_lang = data["activations"][:, layer, :]
-            y_lang = data["labels"]
-            auroc_lang = roc_auc_score(y_lang, score(X_lang))
+        for fmt, data in others.items():
+            X_fmt = data["activations"][:, layer, :]
+            y_fmt = data["labels"]
+            auroc_fmt = roc_auc_score(y_fmt, score(X_fmt))
             rows.append({
                 "model": args.model,
                 "layer": layer,
-                "format": lang,
-                "auroc": auroc_lang,
-                "n": len(y_lang),
+                "format": fmt,
+                "auroc": auroc_fmt,
+                "n": len(y_fmt),
             })
 
         print(f"layer {layer:3d}: english={auroc_en:.3f} " +
-              " ".join(f"{lang}={r['auroc']:.3f}"
-                       for lang, r in zip(others, rows[-len(others):])))
+              " ".join(f"{fmt}={r['auroc']:.3f}"
+                       for fmt, r in zip(others, rows[-len(others):])))
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -139,7 +151,19 @@ def main():
     print(f"\nSaved probe weights to {probes_path}")
 
     results_path = out_dir / f"probe_results__{model_slug(args.model)}.csv"
-    pd.DataFrame(rows).to_csv(results_path, index=False)
+    new_df = pd.DataFrame(rows)
+    # Merge rather than overwrite: this run only recomputed rows for
+    # `args.model` and formats in {"english"} | set(formats) — replace just
+    # those in the existing file (if any) and leave every other model/format
+    # combination already on disk untouched, so re-running with a narrower
+    # --formats doesn't silently drop previously-saved results.
+    if results_path.exists():
+        old_df = pd.read_csv(results_path)
+        recomputed = (old_df["model"] == args.model) & (
+            old_df["format"].isin({"english", *formats}))
+        new_df = pd.concat([old_df[~recomputed], new_df], ignore_index=True)
+    new_df = new_df.sort_values(["model", "format", "layer"])
+    new_df.to_csv(results_path, index=False)
     print(f"Saved AUROC results to {results_path}")
 
 

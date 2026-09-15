@@ -7,6 +7,9 @@ Usage:
         --model Qwen/Qwen2.5-7B-Instruct --format-group languages
     modal run probe_generalization/extract_activations.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct --format-group ciphers
+    modal run probe_generalization/extract_activations.py \\
+        --model Qwen/Qwen2.5-7B-Instruct --format-group ciphers \\
+        --formats letter_spaced
 """
 
 import sys
@@ -17,16 +20,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
-from common.modal_infra import DEFAULT_MODEL, app, model_slug
-from probe_generalization.shared.formats import TEST_LANGUAGES
+from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
 from probe_generalization.shared.modal_app import ActivationExtractor
-from probe_generalization.shared.prompt_rendering import (CIPHER_NAMES, build_prompt,
-                                                   load_translations)
-
-FORMATS_BY_GROUP = {
-    "languages": ["english"] + TEST_LANGUAGES,
-    "ciphers": CIPHER_NAMES,
-}
+from probe_generalization.shared.prompt_rendering import (FORMATS_BY_GROUP,
+                                                          build_prompt,
+                                                          load_translations)
 
 
 def raw_path(raw_dir: Path, label: int, prompt_id: int) -> Path:
@@ -66,6 +64,7 @@ def main(
     max_per_class: int = None,
     model: str = DEFAULT_MODEL,
     format_group: str = "languages",
+    formats: str = None,  # comma-separated subset of format_group; default = all
     out_dir: str = None,
     resume: bool = True,
     translations_path: str = None,
@@ -86,7 +85,18 @@ def main(
             "Pass either --smoke-test or both --harmful-csv and --harmless-csv."
         )
 
-    formats = FORMATS_BY_GROUP[format_group]
+    group_formats = FORMATS_BY_GROUP[format_group]
+    if formats is not None:
+        wanted = formats.split(",")
+        unknown = set(wanted) - set(group_formats)
+        if unknown:
+            raise SystemExit(
+                f"Unknown format(s) for group '{format_group}': {unknown}. "
+                f"Valid: {group_formats}")
+        formats = wanted
+    else:
+        formats = group_formats
+
     if translations_path is None:
         translations_path = (
             "results/probe_generalization/translations_smoketest.jsonl" if

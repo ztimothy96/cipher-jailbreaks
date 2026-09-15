@@ -1,12 +1,15 @@
-"""Step C — causal ablation check: for each probe layer, 
-ablate its diff-of-means direction and measure the drop in refusal rate across languages.
+"""Step C — causal ablation check: for each probe layer,
+ablate its diff-of-means direction and measure the drop in refusal rate
+across languages and/or ciphers.
 
 Usage:
     modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct
     modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
         --layers 3,8,14,20
     modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
-        --languages english,chinese,japanese,spanish
+        --formats english,chinese,japanese,spanish
+    modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
+        --formats letter_spaced
 """
 
 import json
@@ -19,15 +22,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.data import load_harmful_csv
 from common.dataset import LabeledRequest
-from common.modal_infra import DEFAULT_MODEL, app, model_slug
+from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
 from probe_generalization.shared.modal_app import AblationChatModel
-from probe_generalization.shared.prompt_rendering import (TEST_LANGUAGES,
+from probe_generalization.shared.prompt_rendering import (ALL_FORMATS,
+                                                        TEST_LANGUAGES,
                                                         build_prompt,
                                                         is_refusal_multilingual,
                                                         load_translations)
 
 BASELINE = "baseline"
-ALL_LANGUAGES = ["english"] + TEST_LANGUAGES
 
 
 def load_completed(out_path: Path,
@@ -57,18 +60,17 @@ def main(
     max_prompts: int = 20,
     max_new_tokens: int = 256,
     layers: str = None,
-    languages: str = "english",
+    formats: str = "english",
     translations_path: str = "results/probe_generalization/translations.jsonl",
     out: str = None,
     resume: bool = True,
 ):
-    languages = languages.split(",")
-    unknown = set(languages) - set(ALL_LANGUAGES)
+    formats = formats.split(",")
+    unknown = set(formats) - set(ALL_FORMATS)
     if unknown:
-        raise SystemExit(
-            f"Unknown language(s): {unknown}. Valid: {ALL_LANGUAGES}")
-    translations = load_translations(
-        Path(translations_path)) if set(languages) - {"english"} else {}
+        raise SystemExit(f"Unknown format(s): {unknown}. Valid: {ALL_FORMATS}")
+    translations = load_translations(Path(translations_path)) if set(
+        formats) & set(TEST_LANGUAGES) else {}
     slug = model_slug(model)
     if probes_path is None:
         probes_path = f"results/probe_generalization/probes/{slug}.npz"
@@ -103,27 +105,27 @@ def main(
         out_path.unlink()
     completed = load_completed(out_path, model)
     if completed:
-        print(f"Resuming: {len(completed)} (prompt, condition, language) "
+        print(f"Resuming: {len(completed)} (prompt, condition, format) "
               f"triples already done for model '{model}', will be skipped.")
 
     conditions = [BASELINE] + [str(l) for l in candidate_layers]
 
     index = []
-    for lang in languages:
+    for fmt in formats:
         for req in requests:
             try:
-                system_prompt, encoded = build_prompt(lang, req, translations)
+                system_prompt, encoded = build_prompt(fmt, req, translations)
             except KeyError as e:
-                print(f"[{lang}] skipping prompt {req.id}: {e}")
+                print(f"[{fmt}] skipping prompt {req.id}: {e}")
                 continue
             for condition in conditions:
-                if (req.id, condition, lang) in completed:
+                if (req.id, condition, fmt) in completed:
                     continue
-                index.append((req.id, condition, lang, system_prompt, encoded))
+                index.append((req.id, condition, fmt, system_prompt, encoded))
 
     if not index:
         print("Nothing left to do — all requested (prompt, condition, "
-              "language) triples are already in the output file.")
+              "format) triples are already in the output file.")
         return
 
     print(f"Dispatching {len(index)} generations to Modal (model={model}, "
@@ -155,10 +157,10 @@ def main(
             return_exceptions=True,
         )
 
-        for (prompt_id, condition, lang, system_prompt,
+        for (prompt_id, condition, fmt, system_prompt,
              encoded), completion in zip(index, results):
             if isinstance(completion, Exception):
-                print(f"[{lang}] [{prompt_id}] {condition:>10s} FAILED "
+                print(f"[{fmt}] [{prompt_id}] {condition:>10s} FAILED "
                       f"after retries: {completion!r} — will retry on next "
                       f"--resume run")
                 continue
@@ -167,14 +169,18 @@ def main(
                 "model": model,
                 "prompt_id": prompt_id,
                 "condition": condition,  # "baseline" or probe-layer index
-                "language": lang,
+                # Key stays "language" for backward compat with existing
+                # ablation__*.jsonl rows and summarize_ablation.py's
+                # groupby("language") — holds a cipher name too, not just a
+                # language, since ablate.py supports both.
+                "language": fmt,
                 "prompt": encoded,
                 "completion": completion,
-                "is_refusal": is_refusal_multilingual(completion, lang),
+                "is_refusal": is_refusal_multilingual(completion, fmt),
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
             f.flush()
-            print(f"[{lang}] [{prompt_id}] {condition:>10s} "
+            print(f"[{fmt}] [{prompt_id}] {condition:>10s} "
                   f"refusal={record['is_refusal']!s:5}")
 
     print(f"\nWrote results to {out_path}")

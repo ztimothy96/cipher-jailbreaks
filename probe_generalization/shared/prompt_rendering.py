@@ -40,6 +40,17 @@ LANGUAGE_SYSTEM_PROMPT_TEMPLATE = (
 CIPHER_NAMES = [name for name in ALL_CIPHERS if name != "plaintext"]
 ALL_FORMATS = ["english"] + TEST_LANGUAGES + CIPHER_NAMES
 
+# Which activations__<group> subdirectory (see extract_activations.py) a
+# format's saved activations live under.
+FORMATS_BY_GROUP = {
+    "languages": ["english"] + TEST_LANGUAGES,
+    "ciphers": CIPHER_NAMES,
+}
+FORMAT_GROUP = {
+    fmt: group
+    for group, fmts in FORMATS_BY_GROUP.items() for fmt in fmts
+}
+
 
 def load_translations(path: Path) -> dict[tuple[int, int, str], str]:
     translations = {}
