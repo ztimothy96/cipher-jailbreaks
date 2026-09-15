@@ -9,6 +9,32 @@ from common.modal_infra import (DEFAULT_MODEL, GPU, HF_CACHE_PATH, app,
                                  hf_cache_volume, image, load_model)
 
 
+def render_input_ids(tokenizer, system_prompt: str, user_turn: str):
+    """Applies the model's chat template to a (system, user) turn pair and
+    returns the resulting input_ids tensor, moved to CUDA. Shared by every
+    Modal class that runs a generation or forward pass from a rendered chat
+    prompt (ChatModel, ActivationExtractor, AblationChatModel)."""
+    import torch
+
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt
+        },
+        {
+            "role": "user",
+            "content": user_turn
+        },
+    ]
+    input_ids = tokenizer.apply_chat_template(messages,
+                                              add_generation_prompt=True,
+                                              return_tensors="pt",
+                                              return_dict=False)
+    if not isinstance(input_ids, torch.Tensor):
+        input_ids = input_ids["input_ids"]
+    return input_ids.to("cuda")
+
+
 @app.cls(
     image=image,
     gpu=GPU,
@@ -37,24 +63,7 @@ class ChatModel:
                  max_new_tokens: int = 256) -> str:
         import torch
 
-        messages = [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_turn
-            },
-        ]
-        input_ids = self.tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            return_tensors="pt",
-            return_dict=False)
-        if not isinstance(input_ids, torch.Tensor):
-            input_ids = input_ids["input_ids"]
-        input_ids = input_ids.to("cuda")
+        input_ids = render_input_ids(self.tokenizer, system_prompt, user_turn)
 
         with torch.no_grad():
             output_ids = self.model.generate(

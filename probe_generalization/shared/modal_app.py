@@ -7,6 +7,7 @@ import modal
 import numpy as np
 import torch
 
+from common.chat_model import render_input_ids
 from common.modal_infra import (
     DEFAULT_MODEL,
     GPU,
@@ -40,24 +41,7 @@ class ActivationExtractor:
         hidden_dim) float32 array — index 0 is the embedding output, index i
         is the output of transformer block i. See docs/probe-generalization-plan.md §8."""
 
-        messages = [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_turn
-            },
-        ]
-        input_ids = self.tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            return_tensors="pt",
-            return_dict=False)
-        if not isinstance(input_ids, torch.Tensor):
-            input_ids = input_ids["input_ids"]
-        input_ids = input_ids.to("cuda")
+        input_ids = render_input_ids(self.tokenizer, system_prompt, user_turn)
 
         with torch.no_grad():
             output = self.model(input_ids, output_hidden_states=True)
@@ -108,24 +92,7 @@ class AblationChatModel:
                  max_new_tokens: int = 256) -> str:
         """Ablates direction at the specified block. Runs unmodified baseline if block_idx=None or direction=None."""
 
-        messages = [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_turn
-            },
-        ]
-        input_ids = self.tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            return_tensors="pt",
-            return_dict=False)
-        if not isinstance(input_ids, torch.Tensor):
-            input_ids = input_ids["input_ids"]
-        input_ids = input_ids.to("cuda")
+        input_ids = render_input_ids(self.tokenizer, system_prompt, user_turn)
 
         handle = None
         if block_idx is not None and direction is not None:
