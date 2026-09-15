@@ -9,7 +9,7 @@ Usage:
     modal run refusal_gap/measure_refusal_gap.py --model Qwen/Qwen2.5-14B-Instruct --smoke-test
     modal run refusal_gap/measure_refusal_gap.py --harmful-csv path/to/advbench.csv --harmful-col goal
     modal run refusal_gap/measure_refusal_gap.py --harmful-csv path/to/advbench.csv \\
-        --ciphers pig_latin,leetspeak,letter_spaced,middle_swap,snakespeak
+        --ciphers pig_latin,leetspeak,letter_spaced,middle_swap,snakespeak3
 """
 
 import json
@@ -69,7 +69,7 @@ def main(
     smoke_test: bool = False,
     harmful_csv: str = None,
     harmful_col: str = "goal",
-    max_prompts: int = 20,
+    max_prompts: int = 10,
     max_new_tokens: int = 256,
     model: str = DEFAULT_MODEL,
     out: str = None,

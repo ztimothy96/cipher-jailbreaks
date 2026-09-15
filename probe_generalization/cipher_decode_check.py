@@ -53,9 +53,9 @@ CIPHER_RULES = {
     "letter_spaced":
     "In letter-spaced text, a single space is inserted between every "
     "character of the message, including existing spaces. ",
-    "snakespeak":
+    "snakespeak3":
     "In Snakespeak, every occurrence of the letters s, z, c, and x (in "
-    "either case) is replaced with 6 repeated copies of that same "
+    "either case) is replaced with 3 repeated copies of that same "
     "letter, and every other character is left unchanged. ",
     "middle_swap":
     "In Middle-Swap text, the first and last letter of every word stay "
