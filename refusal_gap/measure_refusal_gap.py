@@ -21,8 +21,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from refusal_gap.ciphers import ALL_CIPHERS, build_prompt
 from refusal_gap.data import load_harmful_csv, load_smoke_test_prompts
 from refusal_gap.modal_app import ChatModel
+from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app
 from refusal_gap.refusal import is_refusal
+
+
+def _sort_key(r: dict) -> tuple:
+    return (r.get("model", ""), r["cipher"], r["prompt_id"])
 
 
 def looks_like_decode_noise(text: str) -> bool:
@@ -125,6 +130,7 @@ def main(
         print(
             "Nothing left to do — all requested (prompt, cipher) pairs are already in the output file."
         )
+        sort_output_file(out_path, key=_sort_key)
         return
 
     print(
@@ -187,4 +193,5 @@ def main(
                 f"[{prompt_id}] {cipher_name:10s} refusal={record['is_refusal']!s:5} decode_ok={record['decode_looks_valid']!s:5}"
             )
 
-    print(f"\nWrote results to {out_path}")
+    sort_output_file(out_path, key=_sort_key)
+    print(f"\nWrote results to {out_path} (sorted by cipher, prompt_id)")

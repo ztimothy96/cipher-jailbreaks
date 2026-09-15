@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app
 from probe_generalization.shared.dataset import (load_probe_dataset,
                                                  load_smoke_test_dataset)
@@ -77,28 +78,8 @@ def decode_score(original: str, completion: str) -> float:
                                    completion.strip().lower()).ratio()
 
 
-def _cipher_rank(name: str) -> int:
-    try:
-        return CIPHER_NAMES.index(name)
-    except ValueError:
-        return len(CIPHER_NAMES)
-
-
-def sort_output_file(out_path: Path) -> None:
-    """Rewrites out_path with rows in a fixed (model, prompt_id, label,
-    cipher) order, so results from different resumed runs — which append
-    in whatever order they were dispatched — line up consistently."""
-    if not out_path.exists():
-        return
-    with open(out_path) as f:
-        records = [json.loads(line) for line in f if line.strip()]
-    records.sort(key=lambda r: (r.get("model", ""), r["prompt_id"], r[
-        "label"], _cipher_rank(r["cipher"])))
-    tmp_path = out_path.with_suffix(out_path.suffix + ".tmp")
-    with open(tmp_path, "w") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    tmp_path.replace(out_path)
+def _sort_key(r: dict) -> tuple:
+    return (r.get("model", ""), r["cipher"], r["prompt_id"], r["label"])
 
 
 def load_completed(out_path: Path,
@@ -182,7 +163,7 @@ def main(
     if not index:
         print("Nothing left to do — all requested (prompt, cipher) pairs "
               "are already in the output file.")
-        sort_output_file(out_path)
+        sort_output_file(out_path, key=_sort_key)
         return
 
     print(f"Dispatching {len(index)} decode-screen generations to Modal "
@@ -222,9 +203,9 @@ def main(
             f.flush()
             print(f"[{req.id}] {cipher_name:10s} decode_score={score:.3f}")
 
-    sort_output_file(out_path)
-    print(f"\nWrote results to {out_path} (sorted by prompt_id, label, "
-          f"cipher)")
+    sort_output_file(out_path, key=_sort_key)
+    print(f"\nWrote results to {out_path} (sorted by cipher, prompt_id, "
+          f"label)")
 
 
 if __name__ == "__main__":
