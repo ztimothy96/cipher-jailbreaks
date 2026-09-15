@@ -23,13 +23,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from common.chat_model import ChatModel
+from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from common.modal_infra import DEFAULT_MODEL, app
-from probe_generalization.shared.dataset import load_probe_dataset, load_smoke_test_dataset
 from probe_generalization.shared.prompt_rendering import (ALL_FORMATS, build_prompt,
                                                         is_refusal_multilingual,
                                                         load_translations,
                                                         looks_like_noise)
-from refusal_gap.modal_app import ChatModel
 
 
 def model_slug(model_name: str) -> str:

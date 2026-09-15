@@ -1,4 +1,4 @@
-"""Modal chat-generation class for the refusal-gap experiment.
+"""Modal chat-generation class shared by every experiment in this repo.
 
 Setup: see common/modal_infra.py docstring.
 """

@@ -2,7 +2,7 @@
 by drop from baseline — the layers most causally load-bearing for refusal
 sort to the top. Plots the results as a line chart.
 
-Can use either the keyword scan (refusal_gap.refusal.is_refusal) or the
+Can use either the keyword scan (common.refusal.is_refusal) or the
 LLM-judge label (groq_judge_ablation.py) as the metric.
 
 Usage:

@@ -9,12 +9,12 @@ importing script's own entrypoint.
 import json
 from pathlib import Path
 
-from probe_generalization.shared.dataset import LabeledRequest
+from common.ciphers import ALL_CIPHERS
+from common.dataset import LabeledRequest
+from common.refusal import is_refusal
 from probe_generalization.shared.formats import TEST_LANGUAGES
-from refusal_gap.ciphers import ALL_CIPHERS
-from refusal_gap.refusal import is_refusal
 
-# refusal_gap.refusal.is_refusal only matches English phrases. Applied
+# common.refusal.is_refusal only matches English phrases. Applied
 # directly to a non-English or still-encoded completion it silently returns
 # False regardless of what happened — crude keyword lists per language, same
 # spirit as the English list, not exhaustive.
@@ -85,7 +85,7 @@ def looks_like_noise(text: str) -> bool:
 
 
 def is_refusal_multilingual(text: str, fmt: str) -> bool:
-    """is_refusal for any format: decodes ciphers first (refusal_gap.refusal
+    """is_refusal for any format: decodes ciphers first (common.refusal
     matches English phrases, and a cipher-encoded completion is still-
     encoded English underneath), and uses a per-language keyword list for
     fmt in TEST_LANGUAGES. Calling refusal_gap's is_refusal directly on a

@@ -90,7 +90,7 @@ def _make_ablation_hook(direction):
     retries=3,
 )
 class AblationChatModel:
-    """Same chat-generation setup as refusal_gap.modal_app.ChatModel, but
+    """Same chat-generation setup as common.chat_model.ChatModel, but
     optionally hooks one transformer block during generation to zero out a
     given direction."""
     model_name: str = modal.parameter(default=DEFAULT_MODEL)

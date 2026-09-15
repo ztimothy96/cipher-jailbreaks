@@ -17,14 +17,14 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from common.data import load_harmful_csv
+from common.dataset import LabeledRequest
 from common.modal_infra import DEFAULT_MODEL, app
-from probe_generalization.shared.dataset import LabeledRequest
 from probe_generalization.shared.modal_app import AblationChatModel
 from probe_generalization.shared.prompt_rendering import (TEST_LANGUAGES,
                                                         build_prompt,
                                                         is_refusal_multilingual,
                                                         load_translations)
-from refusal_gap.data import load_harmful_csv
 
 BASELINE = "baseline"
 ALL_LANGUAGES = ["english"] + TEST_LANGUAGES

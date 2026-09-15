@@ -2,7 +2,7 @@
 string, render it in each test format (language or cipher). Train format is
 always plain English.
 
-Ciphers are reused as-is from refusal_gap/ciphers.py (ROT13, Base64,
+Ciphers are reused as-is from common/ciphers.py (ROT13, Base64,
 Leetspeak) — see ALL_CIPHERS there. This module covers only the language
 renderers, via the DeepL API (probe_generalization/deepl_translate.py).
 

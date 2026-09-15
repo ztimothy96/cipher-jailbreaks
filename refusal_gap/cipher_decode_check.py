@@ -8,7 +8,7 @@ scored directly against the known original text with difflib.SequenceMatcher.rat
 The raw score is always stored so a threshold can be applied later via rescan_checks.py-style reprocessing.
 
 Usage:
-    modal run probe_generalization/cipher_decode_check.py --smoke-test \\
+    modal run refusal_gap/cipher_decode_check.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct
 """
 
@@ -19,12 +19,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from common.chat_model import ChatModel
+from common.ciphers import ALL_CIPHERS
+from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app
-from probe_generalization.shared.dataset import (load_probe_dataset,
-                                                 load_smoke_test_dataset)
-from refusal_gap.ciphers import ALL_CIPHERS
-from refusal_gap.modal_app import ChatModel
 
 CIPHER_NAMES = [name for name in ALL_CIPHERS if name != "plaintext"]
 
@@ -135,7 +134,7 @@ def main(
 
     if out is None:
         suffix = "_smoketest" if smoke_test else ""
-        out = f"results/probe_generalization/cipher_decode_check{suffix}__{model_slug(model)}.jsonl"
+        out = f"results/refusal_gap/cipher_decode_check{suffix}__{model_slug(model)}.jsonl"
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

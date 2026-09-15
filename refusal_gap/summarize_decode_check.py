@@ -4,7 +4,7 @@ than guessing one (see conversation — Leetspeak's ceiling may legitimately
 differ from ROT13/Base64's).
 
 Usage:
-    python3 probe_generalization/summarize_decode_check.py \\
+    python3 refusal_gap/summarize_decode_check.py \\
         --model Qwen/Qwen2.5-7B-Instruct
 """
 
@@ -90,7 +90,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
     parser.add_argument("--results-dir",
-                        default="results/probe_generalization")
+                        default="results/refusal_gap")
     parser.add_argument(
         "--smoke-test",
         action="store_true",

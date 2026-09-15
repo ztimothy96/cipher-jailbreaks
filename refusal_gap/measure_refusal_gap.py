@@ -18,12 +18,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from refusal_gap.ciphers import ALL_CIPHERS, build_prompt
-from refusal_gap.data import load_harmful_csv, load_smoke_test_prompts
-from refusal_gap.modal_app import ChatModel
+from common.chat_model import ChatModel
+from common.ciphers import ALL_CIPHERS, build_prompt
+from common.data import load_harmful_csv, load_smoke_test_prompts
 from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app
-from refusal_gap.refusal import is_refusal
+from common.refusal import is_refusal
 
 
 def _sort_key(r: dict) -> tuple:

@@ -1,8 +1,9 @@
-"""Shared prompt-set loading for the probe-generalization experiment.
+"""Shared binary (harmful/harmless) labeled prompt-set loading, used by the
+cipher-decode-check and probe-generalization scripts.
 
 Every prompt here is a binary classification example (label = harmful),
-unlike refusal_gap where only harmful prompts are dispatched. Reuses
-refusal_gap's CSV loaders so both experiments can point at the same
+unlike measure_refusal_gap.py where only harmful prompts are dispatched.
+Reuses common/data.py's CSV loaders so every script can point at the same
 HarmBench/AdvBench-style source files.
 """
 
@@ -23,7 +24,7 @@ def load_probe_dataset(harmful_csv: str,
                         harmful_col: str = "goal",
                         harmless_col: str = "prompt",
                         max_per_class: int | None = None) -> list[LabeledRequest]:
-    from refusal_gap.data import load_harmful_csv, load_harmless_csv
+    from common.data import load_harmful_csv, load_harmless_csv
 
     harmful = load_harmful_csv(harmful_csv, column=harmful_col)
     harmless = load_harmless_csv(harmless_csv, column=harmless_col)

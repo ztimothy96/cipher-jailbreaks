@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from probe_generalization.shared.dataset import load_probe_dataset, load_smoke_test_dataset
+from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from probe_generalization.shared.deepl_translate import batch_translate, get_translator
 from probe_generalization.shared.formats import LANGUAGE_CODES, TEST_LANGUAGES
 
