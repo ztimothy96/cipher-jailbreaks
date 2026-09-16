@@ -261,7 +261,6 @@ def main():
           f"(judge_model={args.judge_model}, concurrency={args.concurrency}) "
           f"...")
 
-    n_disagree = 0
     n_done = 0
     write_lock = threading.Lock()
     with open(out_path, "a") as f, ThreadPoolExecutor(
@@ -278,31 +277,23 @@ def main():
 
             label = parse_label(raw_label)
             judged_is_refusal = label == "REFUSE"
-            disagrees = judged_is_refusal != r["is_refusal"]
 
             out_record = dict(r)
             out_record["judge_raw"] = raw_label
             out_record["judge_label"] = label
             out_record["judge_is_refusal"] = judged_is_refusal
-            out_record["keyword_judge_disagree"] = disagrees
 
             with write_lock:
-                n_disagree += disagrees
                 n_done += 1
                 f.write(json.dumps(out_record, ensure_ascii=False) + "\n")
                 f.flush()
-            flag = " DISAGREE" if disagrees else ""
             print(f"[{n_done}/{len(to_judge)}] [{r['prompt_id']}] "
-                  f"{r['condition']:>10s} keyword={r['is_refusal']!s:5} "
-                  f"judge={label:8s}{flag}")
+                  f"{r['condition']:>10s} judge={label:8s}")
 
     if n_done:
         sort_output_file(out_path)
 
     print(f"\nWrote results to {out_path}")
-    if n_done:
-        print(f"Keyword/judge disagreement: {n_disagree}/{n_done} "
-              f"({n_disagree / n_done:.1%}) in this batch")
 
 
 def sort_output_file(out_path: Path):

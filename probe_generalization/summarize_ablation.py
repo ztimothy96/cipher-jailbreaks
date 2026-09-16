@@ -2,14 +2,11 @@
 by drop from baseline — the layers most causally load-bearing for refusal
 sort to the top. Plots the results as a line chart.
 
-Can use either the keyword scan (common.refusal.is_refusal) or the
-LLM-judge label (groq_judge_ablation.py) as the metric.
+Uses the LLM-judge label from groq_judge_ablation.py as the metric.
 
 Usage:
     python3 probe_generalization/summarize_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct
-    python3 probe_generalization/summarize_ablation.py \\
-        --model Qwen/Qwen2.5-7B-Instruct --metric keyword
 """
 
 import argparse
@@ -28,18 +25,13 @@ from common.modal_infra import model_slug
 
 def save_ablation_results(args: argparse.Namespace):
     slug = model_slug(args.model)
-    judged_path = Path(args.results_dir) / f"ablation_judged__{slug}.jsonl"
-    keyword_path = Path(args.results_dir) / f"ablation__{slug}.jsonl"
-
-    use_judge = args.metric == "judge" or (args.metric == "auto"
-                                           and judged_path.exists())
-    path = judged_path if use_judge else keyword_path
+    path = Path(args.results_dir) / f"ablation_judged__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
-            f"Missing {path} — run ablate.py"
-            f"{' and judge_ablation.py' if use_judge else ''} first.")
-    metric_field = "judge_is_refusal" if use_judge else "is_refusal"
-    metric_name = "judge" if use_judge else "keyword"
+            f"Missing {path} — run ablate.py and groq_judge_ablation.py first."
+        )
+    metric_field = "judge_is_refusal"
+    metric_name = "judge"
     print(f"Using metric: {metric_name} ({path})\n")
 
     records = [json.loads(l) for l in open(path) if l.strip()]
@@ -58,10 +50,6 @@ def save_ablation_results(args: argparse.Namespace):
 
     rows = []
     for lang, lang_df in df.groupby("language"):
-        if use_judge:
-            disagree_rate = lang_df["keyword_judge_disagree"].mean()
-            print(f"[{lang}] keyword/judge disagreement: "
-                  f"{disagree_rate:.1%} of {len(lang_df)} records")
         rates = lang_df.groupby("condition")[metric_field].mean()
         n = lang_df.groupby("condition")[metric_field].size()
         baseline_rate = rates.get("baseline")
@@ -107,17 +95,9 @@ def save_ablation_results(args: argparse.Namespace):
 
 def plot_ablation_results(args: argparse.Namespace):
     slug = model_slug(args.model)
-    if args.metric == "auto":
-        judge_path = Path(
-            args.results_dir) / f"ablation_summary__{slug}__judge.csv"
-        metric_name = "judge" if judge_path.exists() else "keyword"
-    else:
-        metric_name = args.metric
+    metric_name = "judge"
     csv_path = Path(
         args.results_dir) / f"ablation_summary__{slug}__{metric_name}.csv"
-    if not csv_path.exists():
-        raise SystemExit(f"Missing {csv_path} — run summarize_ablation.py "
-                         f"--metric {metric_name} first.")
     df = pd.read_csv(csv_path)
     if args.even_layers_only:
         df = df[df["layer"] % 2 == 0]
@@ -156,9 +136,8 @@ def plot_ablation_results(args: argparse.Namespace):
     fig.tight_layout()
 
     suffix = "__even_layers" if args.even_layers_only else ""
-    out_path = Path(
-        args.results_dir
-    ) / f"ablation_summary__{slug}__{metric_name}{suffix}.png"
+    out_path = Path(args.results_dir
+                    ) / f"ablation_summary__{slug}__{metric_name}{suffix}.png"
     fig.savefig(out_path)
     print(f"Saved {out_path} (metric={metric_name}, "
           f"even_layers_only={args.even_layers_only})")
@@ -170,22 +149,15 @@ def main():
     parser.add_argument("--results-dir",
                         default="results/probe_generalization")
     parser.add_argument(
-        "--metric",
-        choices=["auto", "keyword", "judge"],
-        default="auto",
-        help="'auto' uses the judge label if ablation_judged__*.jsonl "
-        "exists, else falls back to the keyword scan.")
-    parser.add_argument(
         "--max-prompts",
         type=int,
         default=None,
         help="Restrict to prompt_id < this many, so languages judged on "
         "different numbers of prompts are still compared on the same "
         "shared subset.")
-    parser.add_argument(
-        "--even-layers-only",
-        action="store_true",
-        help="Plot only even-numbered ablated layers.")
+    parser.add_argument("--even-layers-only",
+                        action="store_true",
+                        help="Plot only even-numbered ablated layers.")
     args = parser.parse_args()
 
     save_ablation_results(args)

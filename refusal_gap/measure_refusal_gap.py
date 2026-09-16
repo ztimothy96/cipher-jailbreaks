@@ -23,7 +23,6 @@ from common.ciphers import ALL_CIPHERS, build_prompt
 from common.data import load_harmful_csv, load_smoke_test_prompts
 from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
-from common.refusal import is_refusal
 
 
 def _sort_key(r: dict) -> tuple:
@@ -179,15 +178,11 @@ def main(
                 decoded_completion,
                 "decode_looks_valid":
                 not looks_like_decode_noise(decoded_completion),
-                "is_refusal":
-                is_refusal(decoded_completion),
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
             f.flush(
             )  # durability: survive a crash/dropped connection right after this line
-            print(
-                f"[{prompt_id}] {cipher_name:10s} refusal={record['is_refusal']!s:5} decode_ok={record['decode_looks_valid']!s:5}"
-            )
+            print(f"[{prompt_id}] {cipher_name:10s}")
 
     sort_output_file(out_path, key=_sort_key)
     print(f"\nWrote results to {out_path} (sorted by cipher, prompt_id)")

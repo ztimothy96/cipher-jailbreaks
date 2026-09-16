@@ -25,10 +25,9 @@ from common.dataset import LabeledRequest
 from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
 from probe_generalization.shared.modal_app import AblationChatModel
 from probe_generalization.shared.prompt_rendering import (ALL_FORMATS,
-                                                        TEST_LANGUAGES,
-                                                        build_prompt,
-                                                        is_refusal_multilingual,
-                                                        load_translations)
+                                                          TEST_LANGUAGES,
+                                                          build_prompt,
+                                                          load_translations)
 
 BASELINE = "baseline"
 
@@ -69,8 +68,8 @@ def main(
     unknown = set(formats) - set(ALL_FORMATS)
     if unknown:
         raise SystemExit(f"Unknown format(s): {unknown}. Valid: {ALL_FORMATS}")
-    translations = load_translations(Path(translations_path)) if set(
-        formats) & set(TEST_LANGUAGES) else {}
+    translations = load_translations(
+        Path(translations_path)) if set(formats) & set(TEST_LANGUAGES) else {}
     slug = model_slug(model)
     if probes_path is None:
         probes_path = f"results/probe_generalization/probes/{slug}.npz"
@@ -176,11 +175,9 @@ def main(
                 "language": fmt,
                 "prompt": encoded,
                 "completion": completion,
-                "is_refusal": is_refusal_multilingual(completion, fmt),
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
             f.flush()
-            print(f"[{fmt}] [{prompt_id}] {condition:>10s} "
-                  f"refusal={record['is_refusal']!s:5}")
+            print(f"[{fmt}] [{prompt_id}] {condition:>10s} generated")
 
     print(f"\nWrote results to {out_path}")

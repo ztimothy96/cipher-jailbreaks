@@ -1,10 +1,10 @@
-"""Recomputes understanding_ok/is_refusal on an existing understanding_check
+"""Recomputes understanding_ok on an existing understanding_check
 output file, from its stored `completion` field — no model call, no Modal.
 
-Use this whenever only local scoring logic (looks_like_noise,
-is_refusal_multilingual) changes, not the actual model responses. Re-running
-understanding_check.py itself re-generates from the model, which costs real
-GPU time for a fix that has nothing to do with generation.
+Use this whenever only local scoring logic (looks_like_noise) changes, not
+the actual model responses. Re-running understanding_check.py itself
+re-generates from the model, which costs real GPU time for a fix that has
+nothing to do with generation.
 
 Usage:
     python3 probe_generalization/rescan_checks.py \\
@@ -18,8 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from probe_generalization.shared.prompt_rendering import (is_refusal_multilingual,
-                                                        looks_like_noise)
+from probe_generalization.shared.prompt_rendering import looks_like_noise
 
 
 def main():
@@ -42,8 +41,6 @@ def main():
             record = json.loads(line)
             record["understanding_ok"] = not looks_like_noise(
                 record["completion"])
-            record["is_refusal"] = is_refusal_multilingual(
-                record["completion"], record["format"])
             records.append(record)
 
     with open(out_path, "w") as f:
