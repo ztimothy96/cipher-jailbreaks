@@ -28,10 +28,30 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from common.ciphers import ALL_CIPHERS
 from common.modal_infra import model_slug
 from probe_generalization.shared.judge_prompt import (JUDGE_SYSTEM_PROMPT,
                                                       judge_user_turn,
                                                       parse_label)
+
+CIPHER_NAMES = {name for name in ALL_CIPHERS if name != "plaintext"}
+
+
+def decode_for_judge(text: str, language: str) -> str:
+    """Decodes cipher-formatted text back to plain English before it's shown
+    to the judge, so the judge is grading semantics rather than trying to
+    read the cipher itself. No-op for natural-language formats (English and
+    the translated TEST_LANGUAGES), which the judge can already read."""
+    if language not in CIPHER_NAMES:
+        return text
+    try:
+        return ALL_CIPHERS[language].decode(text)
+    except Exception:
+        # Model output doesn't always round-trip through decode (garbled
+        # completions, wrong format, etc.) — fall back to the raw cipher
+        # text rather than dropping the record.
+        return text
+
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MAX_RETRIES = 3
@@ -147,6 +167,12 @@ def main():
                         help="Comma-separated subset to judge."
                         "Default judges every language in the ablation file.")
     parser.add_argument(
+        "--conditions",
+        default=None,
+        help="Comma-separated subset of conditions to judge (e.g. "
+        "'baseline' or 'baseline,0,2'). Default judges every condition in "
+        "the ablation file.")
+    parser.add_argument(
         "--even-layers-only",
         action="store_true",
         help="Judge only conditions where the ablated layer is even.")
@@ -174,6 +200,9 @@ def main():
     if args.languages is not None:
         wanted = set(args.languages.split(","))
         records = [r for r in records if r["language"] in wanted]
+    if args.conditions is not None:
+        wanted = set(args.conditions.split(","))
+        records = [r for r in records if r["condition"] in wanted]
     if args.even_layers_only:
         # None of these filters depend on `language`, so every language
         # present in `records` gets exactly the same (prompt_id, condition)
@@ -187,6 +216,7 @@ def main():
         print(f"Subsampled to {len(records)}/{n_total} records "
               f"(--max-prompts={args.max_prompts}, "
               f"--languages={args.languages}, "
+              f"--conditions={args.conditions}, "
               f"--even-layers-only={args.even_layers_only}).")
 
     out_path = Path(
@@ -221,8 +251,10 @@ def main():
         return thread_local.client
 
     def judge_record(r):
-        raw_label = judge_one(get_thread_client(), args.judge_model,
-                              r["prompt"], r["completion"])
+        request = decode_for_judge(r["prompt"], r["language"])
+        completion = decode_for_judge(r["completion"], r["language"])
+        raw_label = judge_one(get_thread_client(), args.judge_model, request,
+                              completion)
         return r, raw_label
 
     print(f"Judging {len(to_judge)} completions via Groq "
