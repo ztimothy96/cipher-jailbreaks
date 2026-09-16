@@ -28,30 +28,15 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common.ciphers import ALL_CIPHERS
+from common.jsonl_output import sort_output_file
 from common.modal_infra import model_slug
+from probe_generalization.shared.ablation_records import (COMPLETION_FIELD,
+                                                          FMT_FIELD,
+                                                          REQUEST_FIELD,
+                                                          sort_key)
 from probe_generalization.shared.judge_prompt import (JUDGE_SYSTEM_PROMPT,
                                                       judge_user_turn,
                                                       parse_label)
-
-CIPHER_NAMES = {name for name in ALL_CIPHERS if name != "plaintext"}
-
-
-def decode_for_judge(text: str, language: str) -> str:
-    """Decodes cipher-formatted text back to plain English before it's shown
-    to the judge, so the judge is grading semantics rather than trying to
-    read the cipher itself. No-op for natural-language formats (English and
-    the translated TEST_LANGUAGES), which the judge can already read."""
-    if language not in CIPHER_NAMES:
-        return text
-    try:
-        return ALL_CIPHERS[language].decode(text)
-    except Exception:
-        # Model output doesn't always round-trip through decode (garbled
-        # completions, wrong format, etc.) — fall back to the raw cipher
-        # text rather than dropping the record.
-        return text
-
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MAX_RETRIES = 3
@@ -119,7 +104,7 @@ def judge_one(client, judge_model: str, request: str, completion: str) -> str:
     raise last_error
 
 
-def load_judged_keys(out_path: Path) -> set[tuple]:
+def load_judged_keys(out_path: Path, fmt_field: str) -> set[tuple]:
     if not out_path.exists():
         return set()
     keys = set()
@@ -129,8 +114,119 @@ def load_judged_keys(out_path: Path) -> set[tuple]:
             if not line:
                 continue
             r = json.loads(line)
-            keys.add((r["prompt_id"], r["condition"], r["language"]))
+            keys.add((r["prompt_id"], r["condition"], r[fmt_field]))
     return keys
+
+
+def judge_track(args, track: str, slug: str):
+    fmt_field = FMT_FIELD[track]
+    request_field = REQUEST_FIELD[track]
+    completion_field = COMPLETION_FIELD[track]
+
+    ablation_path = Path(args.results_dir) / f"ablation_{track}__{slug}.jsonl"
+    if not ablation_path.exists():
+        print(f"[{track}] no {ablation_path} — skipping (run ablate.py "
+              f"first if you expected this track).")
+        return
+
+    with open(ablation_path) as f:
+        records = [json.loads(line) for line in f if line.strip()]
+
+    n_total = len(records)
+    if args.max_prompts is not None:
+        records = [r for r in records if r["prompt_id"] < args.max_prompts]
+    if args.formats is not None:
+        wanted = set(args.formats.split(","))
+        records = [r for r in records if r[fmt_field] in wanted]
+    if args.conditions is not None:
+        wanted = set(args.conditions.split(","))
+        records = [r for r in records if r["condition"] in wanted]
+    if args.even_layers_only:
+        records = [
+            r for r in records
+            if r["condition"] == "baseline" or int(r["condition"]) % 2 == 0
+        ]
+    if len(records) != n_total:
+        print(f"[{track}] subsampled to {len(records)}/{n_total} records "
+              f"(--max-prompts={args.max_prompts}, --formats={args.formats}, "
+              f"--conditions={args.conditions}, "
+              f"--even-layers-only={args.even_layers_only}).")
+
+    out_path = Path(
+        args.results_dir) / f"ablation_judged_{track}__{slug}.jsonl"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if not args.resume and out_path.exists():
+        out_path.unlink()
+
+    judged = load_judged_keys(out_path, fmt_field)
+    if judged:
+        print(f"[{track}] resuming: {len(judged)} records already judged, "
+              f"skipping.")
+
+    to_judge = [
+        r for r in records
+        if (r["prompt_id"], r["condition"], r[fmt_field]) not in judged
+    ]
+    if not to_judge:
+        print(f"[{track}] nothing left to judge.")
+        sort_output_file(out_path, key=sort_key(fmt_field))
+        return
+
+    # One client per worker thread — the openai SDK's HTTP client isn't
+    # documented as thread-safe for concurrent .create() calls, and clients
+    # are cheap (no connection setup at construction time), so this avoids
+    # relying on an unstated guarantee rather than actually saving anything.
+    thread_local = threading.local()
+
+    def get_thread_client():
+        if not hasattr(thread_local, "client"):
+            thread_local.client = get_client()
+        return thread_local.client
+
+    def judge_record(r):
+        request = r[request_field]
+        completion = r[completion_field]
+        raw_label = judge_one(get_thread_client(), args.judge_model, request,
+                              completion)
+        return r, raw_label
+
+    print(f"[{track}] judging {len(to_judge)} completions via Groq "
+          f"(judge_model={args.judge_model}, concurrency={args.concurrency}) "
+          f"...")
+
+    n_done = 0
+    write_lock = threading.Lock()
+    with open(out_path, "a") as f, ThreadPoolExecutor(
+            max_workers=args.concurrency) as pool:
+        futures = {pool.submit(judge_record, r): r for r in to_judge}
+        for future in as_completed(futures):
+            r = futures[future]
+            try:
+                r, raw_label = future.result()
+            except Exception as e:
+                print(f"[{track}] [{r['prompt_id']}] {r['condition']:>10s} "
+                      f"FAILED after retries: {e!r} — will retry on next run")
+                continue
+
+            label = parse_label(raw_label)
+            judged_is_refusal = label == "REFUSE"
+
+            out_record = dict(r)
+            out_record["judge_raw"] = raw_label
+            out_record["judge_label"] = label
+            out_record["judge_is_refusal"] = judged_is_refusal
+
+            with write_lock:
+                n_done += 1
+                f.write(json.dumps(out_record, ensure_ascii=False) + "\n")
+                f.flush()
+            print(f"[{track}] [{n_done}/{len(to_judge)}] "
+                  f"[{r['prompt_id']}] {r['condition']:>10s} judge={label:8s}")
+
+    if n_done:
+        sort_output_file(out_path, key=sort_key(fmt_field))
+
+    print(f"[{track}] wrote results to {out_path}")
 
 
 def main():
@@ -138,15 +234,21 @@ def main():
     parser.add_argument("--model",
                         required=True,
                         help="The model being evaluated (identifies which "
-                        "ablation__*.jsonl to read), not the judge.")
+                        "ablation_{languages,ciphers}__*.jsonl to read), not "
+                        "the judge.")
     parser.add_argument("--judge-model",
                         default="openai/gpt-oss-20b",
                         help="Groq-hosted model id to use as judge — verify "
                         "the current free-tier name at "
                         "https://console.groq.com/docs/models before "
                         "relying on this default.")
-    parser.add_argument("--ablation-path", default=None)
-    parser.add_argument("--out", default=None)
+    parser.add_argument("--track",
+                        choices=["languages", "ciphers"],
+                        default=None,
+                        help="Judge only this track. Default judges both "
+                        "(whichever ablation_{track}__*.jsonl files exist).")
+    parser.add_argument("--results-dir",
+                        default="results/probe_generalization")
     parser.add_argument("--resume", action="store_true", default=True)
     parser.add_argument("--no-resume", dest="resume", action="store_false")
     parser.add_argument(
@@ -162,10 +264,11 @@ def main():
         default=None,
         help="Judge only prompt_id < this many of the harmful prompts."
         "Default judges every prompt in the ablation file.")
-    parser.add_argument("--languages",
+    parser.add_argument("--formats",
                         default=None,
-                        help="Comma-separated subset to judge."
-                        "Default judges every language in the ablation file.")
+                        help="Comma-separated subset (languages or ciphers, "
+                        "matching --track) to judge. Default judges every "
+                        "format in the ablation file.")
     parser.add_argument(
         "--conditions",
         default=None,
@@ -179,136 +282,9 @@ def main():
     args = parser.parse_args()
 
     slug = model_slug(args.model)
-    ablation_path = Path(
-        args.ablation_path
-        or f"results/probe_generalization/ablation__{slug}.jsonl")
-    if not ablation_path.exists():
-        raise SystemExit(f"Missing {ablation_path} — run ablate.py first.")
-
-    records = []
-    with open(ablation_path) as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
-    for r in records:
-        r.setdefault("language", "english")
-
-    n_total = len(records)
-    if args.max_prompts is not None:
-        records = [r for r in records if r["prompt_id"] < args.max_prompts]
-    if args.languages is not None:
-        wanted = set(args.languages.split(","))
-        records = [r for r in records if r["language"] in wanted]
-    if args.conditions is not None:
-        wanted = set(args.conditions.split(","))
-        records = [r for r in records if r["condition"] in wanted]
-    if args.even_layers_only:
-        # None of these filters depend on `language`, so every language
-        # present in `records` gets exactly the same (prompt_id, condition)
-        # slice — required for the per-language curves to be comparable
-        # rather than differing by sampling noise.
-        records = [
-            r for r in records
-            if r["condition"] == "baseline" or int(r["condition"]) % 2 == 0
-        ]
-    if len(records) != n_total:
-        print(f"Subsampled to {len(records)}/{n_total} records "
-              f"(--max-prompts={args.max_prompts}, "
-              f"--languages={args.languages}, "
-              f"--conditions={args.conditions}, "
-              f"--even-layers-only={args.even_layers_only}).")
-
-    out_path = Path(
-        args.out
-        or f"results/probe_generalization/ablation_judged__{slug}.jsonl")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    if not args.resume and out_path.exists():
-        out_path.unlink()
-
-    judged = load_judged_keys(out_path)
-    if judged:
-        print(f"Resuming: {len(judged)} records already judged, skipping.")
-
-    to_judge = [
-        r for r in records
-        if (r["prompt_id"], r["condition"], r["language"]) not in judged
-    ]
-    if not to_judge:
-        print("Nothing left to judge.")
-        sort_output_file(out_path)
-        return
-
-    # One client per worker thread — the openai SDK's HTTP client isn't
-    # documented as thread-safe for concurrent .create() calls, and clients
-    # are cheap (no connection setup at construction time), so this avoids
-    # relying on an unstated guarantee rather than actually saving anything.
-    thread_local = threading.local()
-
-    def get_thread_client():
-        if not hasattr(thread_local, "client"):
-            thread_local.client = get_client()
-        return thread_local.client
-
-    def judge_record(r):
-        request = decode_for_judge(r["prompt"], r["language"])
-        completion = decode_for_judge(r["completion"], r["language"])
-        raw_label = judge_one(get_thread_client(), args.judge_model, request,
-                              completion)
-        return r, raw_label
-
-    print(f"Judging {len(to_judge)} completions via Groq "
-          f"(judge_model={args.judge_model}, concurrency={args.concurrency}) "
-          f"...")
-
-    n_done = 0
-    write_lock = threading.Lock()
-    with open(out_path, "a") as f, ThreadPoolExecutor(
-            max_workers=args.concurrency) as pool:
-        futures = {pool.submit(judge_record, r): r for r in to_judge}
-        for future in as_completed(futures):
-            r = futures[future]
-            try:
-                r, raw_label = future.result()
-            except Exception as e:
-                print(f"[{r['prompt_id']}] {r['condition']:>10s} FAILED "
-                      f"after retries: {e!r} — will retry on next run")
-                continue
-
-            label = parse_label(raw_label)
-            judged_is_refusal = label == "REFUSE"
-
-            out_record = dict(r)
-            out_record["judge_raw"] = raw_label
-            out_record["judge_label"] = label
-            out_record["judge_is_refusal"] = judged_is_refusal
-
-            with write_lock:
-                n_done += 1
-                f.write(json.dumps(out_record, ensure_ascii=False) + "\n")
-                f.flush()
-            print(f"[{n_done}/{len(to_judge)}] [{r['prompt_id']}] "
-                  f"{r['condition']:>10s} judge={label:8s}")
-
-    if n_done:
-        sort_output_file(out_path)
-
-    print(f"\nWrote results to {out_path}")
-
-
-def sort_output_file(out_path: Path):
-
-    def sort_key(r):
-        condition = r["condition"]
-        layer = -1 if condition == "baseline" else int(condition)
-        return (r["language"], layer, r["prompt_id"])
-
-    with open(out_path) as f:
-        records = [json.loads(line) for line in f if line.strip()]
-    records.sort(key=sort_key)
-    with open(out_path, "w") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    tracks = [args.track] if args.track else ["languages", "ciphers"]
+    for track in tracks:
+        judge_track(args, track, slug)
 
 
 if __name__ == "__main__":

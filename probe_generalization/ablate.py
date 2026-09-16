@@ -20,20 +20,33 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from common.ciphers import ALL_CIPHERS
 from common.data import load_harmful_csv
 from common.dataset import LabeledRequest
+from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
+from probe_generalization.shared.ablation_records import (
+    BASELINE, FMT_FIELD, CipherAblationRecord, LanguageAblationRecord,
+    sort_key)
 from probe_generalization.shared.modal_app import AblationChatModel
 from probe_generalization.shared.prompt_rendering import (ALL_FORMATS,
+                                                          FORMAT_GROUP,
                                                           TEST_LANGUAGES,
                                                           build_prompt,
                                                           load_translations)
 
-BASELINE = "baseline"
+
+def decode_for_record(fmt: str, text: str) -> str:
+    """Decodes a cipher completion back to plaintext for storage."""
+    try:
+        return ALL_CIPHERS[fmt].decode(text)
+    except Exception:
+        return text
 
 
-def load_completed(out_path: Path,
-                   model_name: str) -> set[tuple[int, str, str]]:
+def load_completed(out_path: Path, model_name: str,
+                   fmt_field: str) -> set[tuple[int, str, str]]:
+    """Loads completed records from an output file."""
     if not out_path.exists():
         return set()
     completed = set()
@@ -45,8 +58,8 @@ def load_completed(out_path: Path,
             record = json.loads(line)
             if record.get("model") != model_name:
                 continue
-            completed.add((record["prompt_id"], record["condition"],
-                           record.get("language", "english")))
+            completed.add(
+                (record["prompt_id"], record["condition"], record[fmt_field]))
     return completed
 
 
@@ -61,7 +74,7 @@ def main(
     layers: str = None,
     formats: str = "english",
     translations_path: str = "results/probe_generalization/translations.jsonl",
-    out: str = None,
+    out_dir: str = "results/probe_generalization",
     resume: bool = True,
 ):
     formats = formats.split(",")
@@ -95,22 +108,31 @@ def main(
         for i, t in enumerate(harmful_texts)
     ]
 
-    if out is None:
-        out = f"results/probe_generalization/ablation__{slug}.jsonl"
-    out_path = Path(out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_dir_path = Path(out_dir)
+    out_dir_path.mkdir(parents=True, exist_ok=True)
+    out_paths = {
+        track: out_dir_path / f"ablation_{track}__{slug}.jsonl"
+        for track in ("languages", "ciphers")
+    }
 
-    if not resume and out_path.exists():
-        out_path.unlink()
-    completed = load_completed(out_path, model)
-    if completed:
-        print(f"Resuming: {len(completed)} (prompt, condition, format) "
+    if not resume:
+        for path in out_paths.values():
+            if path.exists():
+                path.unlink()
+    completed = {
+        track: load_completed(path, model, FMT_FIELD[track])
+        for track, path in out_paths.items()
+    }
+    n_completed = sum(len(c) for c in completed.values())
+    if n_completed:
+        print(f"Resuming: {n_completed} (prompt, condition, format) "
               f"triples already done for model '{model}', will be skipped.")
 
     conditions = [BASELINE] + [str(l) for l in candidate_layers]
 
     index = []
     for fmt in formats:
+        track = FORMAT_GROUP[fmt]
         for req in requests:
             try:
                 system_prompt, encoded = build_prompt(fmt, req, translations)
@@ -118,13 +140,16 @@ def main(
                 print(f"[{fmt}] skipping prompt {req.id}: {e}")
                 continue
             for condition in conditions:
-                if (req.id, condition, fmt) in completed:
+                if (req.id, condition, fmt) in completed[track]:
                     continue
-                index.append((req.id, condition, fmt, system_prompt, encoded))
+                index.append(
+                    (req, condition, fmt, track, system_prompt, encoded))
 
     if not index:
         print("Nothing left to do — all requested (prompt, condition, "
               "format) triples are already in the output file.")
+        for track, path in out_paths.items():
+            sort_output_file(path, key=sort_key(FMT_FIELD[track]))
         return
 
     print(f"Dispatching {len(index)} generations to Modal (model={model}, "
@@ -133,19 +158,20 @@ def main(
     chat_model = AblationChatModel.with_options(gpu=gpu_for(model))(
         model_name=model)
 
-    system_prompts = [row[3] for row in index]
-    user_turns = [row[4] for row in index]
+    system_prompts = [row[4] for row in index]
+    user_turns = [row[5] for row in index]
     block_idxs = [
         None if condition == BASELINE else int(condition) - 1
-        for _, condition, _, _, _ in index
+        for _, condition, _, _, _, _ in index
     ]
     directions = [
         None if condition == BASELINE else weights[int(condition)].tolist()
-        for _, condition, _, _, _ in index
+        for _, condition, _, _, _, _ in index
     ]
     max_new_tokens_list = [max_new_tokens] * len(index)
 
-    with open(out_path, "a") as f:
+    open_files = {track: open(path, "a") for track, path in out_paths.items()}
+    try:
         results = chat_model.generate.map(
             system_prompts,
             user_turns,
@@ -156,28 +182,43 @@ def main(
             return_exceptions=True,
         )
 
-        for (prompt_id, condition, fmt, system_prompt,
+        for (req, condition, fmt, track, system_prompt,
              encoded), completion in zip(index, results):
             if isinstance(completion, Exception):
-                print(f"[{fmt}] [{prompt_id}] {condition:>10s} FAILED "
+                print(f"[{fmt}] [{req.id}] {condition:>10s} FAILED "
                       f"after retries: {completion!r} — will retry on next "
                       f"--resume run")
                 continue
 
-            record = {
-                "model": model,
-                "prompt_id": prompt_id,
-                "condition": condition,  # "baseline" or probe-layer index
-                # Key stays "language" for backward compat with existing
-                # ablation__*.jsonl rows and summarize_ablation.py's
-                # groupby("language") — holds a cipher name too, not just a
-                # language, since ablate.py supports both.
-                "language": fmt,
-                "prompt": encoded,
-                "completion": completion,
-            }
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-            f.flush()
-            print(f"[{fmt}] [{prompt_id}] {condition:>10s} generated")
+            if track == "ciphers":
+                record = CipherAblationRecord(
+                    model=model,
+                    prompt_id=req.id,
+                    condition=condition,
+                    cipher=fmt,
+                    encoded_prompt=encoded,
+                    decoded_prompt=req.text,
+                    raw_completion=completion,
+                    decoded_completion=decode_for_record(fmt, completion),
+                )
+            else:
+                record = LanguageAblationRecord(
+                    model=model,
+                    prompt_id=req.id,
+                    condition=condition,
+                    language=fmt,
+                    prompt=encoded,
+                    completion=completion,
+                )
 
-    print(f"\nWrote results to {out_path}")
+            f = open_files[track]
+            f.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
+            f.flush()
+            print(f"[{fmt}] [{req.id}] {condition:>10s} generated")
+    finally:
+        for f in open_files.values():
+            f.close()
+
+    for track, path in out_paths.items():
+        sort_output_file(path, key=sort_key(FMT_FIELD[track]))
+        print(f"Wrote {track} results to {path}")
