@@ -84,24 +84,29 @@ def main(
     translations = load_translations(
         Path(translations_path)) if set(formats) & set(TEST_LANGUAGES) else {}
     slug = model_slug(model)
-    if probes_path is None:
-        probes_path = f"results/probe_generalization/probes/{slug}.npz"
-    probes_path = Path(probes_path)
-    if not probes_path.exists():
-        raise SystemExit(
-            f"Missing {probes_path} — run probe.py for this model first.")
-    probe_data = np.load(probes_path)
-    weights = probe_data[
-        "weights"]  # (n_layers, hidden_dim); index 0 = embeddings
-    n_probe_layers = weights.shape[0]
 
-    if layers is None:
-        # Layer 0 is the embedding output, so it's skipped.
-        candidate_layers = list(range(1, n_probe_layers))
+    # Only load probe weights if we're ablating layers.
+    baseline_only = layers is not None and not layers.strip()
+    if baseline_only:
+        weights = None
+        candidate_layers = []
     else:
-        # Empty string (e.g. --layers "") means no ablated layers — a
-        # baseline-only run.
-        candidate_layers = [int(x) for x in layers.split(",") if x]
+        if probes_path is None:
+            probes_path = f"results/probe_generalization/probes/{slug}.npz"
+        probes_path = Path(probes_path)
+        if not probes_path.exists():
+            raise SystemExit(
+                f"Missing {probes_path} — run probe.py for this model first.")
+        probe_data = np.load(probes_path)
+        weights = probe_data[
+            "weights"]  # (n_layers, hidden_dim); index 0 = embeddings
+        n_probe_layers = weights.shape[0]
+
+        if layers is None:
+            # Layer 0 is the embedding output, so it's skipped.
+            candidate_layers = list(range(1, n_probe_layers))
+        else:
+            candidate_layers = [int(x) for x in layers.split(",") if x]
 
     harmful_texts = load_harmful_csv(harmful_csv,
                                      column=harmful_col)[:max_prompts]
