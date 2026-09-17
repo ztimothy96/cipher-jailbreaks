@@ -9,7 +9,7 @@ Usage:
     modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
         --formats english,chinese,japanese,spanish
     modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
-        --formats letter_spaced
+        --formats letter_spaced --layers "" --max-prompts 100
 """
 
 import json
@@ -99,7 +99,9 @@ def main(
         # Layer 0 is the embedding output, so it's skipped.
         candidate_layers = list(range(1, n_probe_layers))
     else:
-        candidate_layers = [int(x) for x in layers.split(",")]
+        # Empty string (e.g. --layers "") means no ablated layers — a
+        # baseline-only run.
+        candidate_layers = [int(x) for x in layers.split(",") if x]
 
     harmful_texts = load_harmful_csv(harmful_csv,
                                      column=harmful_col)[:max_prompts]

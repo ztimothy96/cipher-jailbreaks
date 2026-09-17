@@ -13,6 +13,8 @@ GROQ_API_KEY to .env. Double check the current free-tier model name/rate limits.
 Usage:
     python3 probe_generalization/groq_judge_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct --judge-model openai/gpt-oss-20b
+    python3 probe_generalization/groq_judge_ablation.py \\
+        --model Qwen/Qwen2.5-7B-Instruct --track ciphers --conditions baseline
 """
 
 import argparse
