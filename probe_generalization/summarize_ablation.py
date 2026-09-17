@@ -63,6 +63,9 @@ def save_ablation_results(args: argparse.Namespace):
               f"{len(df)}/{n_before} records (keeps language curves "
               f"comparable when some languages are judged on more "
               f"prompts than others).\n")
+    if args.conditions is not None:
+        wanted = set(args.conditions.split(","))
+        df = df[df["condition"].isin(wanted)]
 
     # echo_rate is reported alongside refusal_rate for every track, but only
     # the ciphers track actually sees ECHO fire much (a model echoing/
@@ -93,7 +96,9 @@ def save_ablation_results(args: argparse.Namespace):
                 "n": n[condition],
             })
     if not rows:
-        raise SystemExit("No complete (format, layer) results found.")
+        print("No ablated-layer results to summarize (e.g. a baseline-only "
+              "run) — skipping the refusal-rate-by-layer chart.")
+        return
     out = pd.DataFrame(rows).sort_values(["format", "drop"],
                                          ascending=[True, False])
 
@@ -124,6 +129,9 @@ def plot_ablation_results(args: argparse.Namespace):
     csv_path = Path(
         args.results_dir
     ) / f"ablation_summary__{slug}__{metric_name}__{args.track}.csv"
+    if not csv_path.exists():
+        print(f"No {csv_path} — skipping the refusal-rate-by-layer chart.")
+        return
     df = pd.read_csv(csv_path)
     if args.even_layers_only:
         df = df[df["layer"] % 2 == 0]
@@ -191,6 +199,9 @@ def save_label_breakdown(args: argparse.Namespace):
     df = df[df["model"] == args.model]
     if args.max_prompts is not None:
         df = df[df["prompt_id"] < args.max_prompts]
+    if args.conditions is not None:
+        wanted = set(args.conditions.split(","))
+        df = df[df["condition"].isin(wanted)]
     if args.even_layers_only:
         # pandas | isn't short-circuited like Python's `or` — astype(int)
         # would run on the "baseline" rows too before the OR is applied, so
@@ -290,6 +301,12 @@ def main():
     parser.add_argument("--even-layers-only",
                         action="store_true",
                         help="Plot only even-numbered ablated layers.")
+    parser.add_argument(
+        "--conditions",
+        default=None,
+        help="Comma-separated subset of conditions to summarize (e.g. "
+        "'baseline' or 'baseline,0,2'). Default summarizes every condition "
+        "in the judged file.")
     args = parser.parse_args()
     save_ablation_results(args)
     plot_ablation_results(args)
