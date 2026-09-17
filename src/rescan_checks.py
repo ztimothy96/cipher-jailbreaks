@@ -7,8 +7,8 @@ re-generates from the model, which costs real GPU time for a fix that has
 nothing to do with generation.
 
 Usage:
-    python3 probe_generalization/rescan_checks.py \\
-        --in results/probe_generalization/understanding_check__Qwen__Qwen2.5-7B-Instruct.jsonl
+    python3 src/rescan_checks.py \\
+        --in results/src/understanding_check__Qwen__Qwen2.5-7B-Instruct.jsonl
 """
 
 import argparse
@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from probe_generalization.shared.prompt_rendering import looks_like_noise
+from src.shared.prompt_rendering import looks_like_noise
 
 
 def main():

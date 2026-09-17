@@ -10,9 +10,9 @@ rendering and can't import this file directly without colliding with its
 own @app.local_entrypoint() (see prompt_rendering.py docstring).
 
 Usage:
-    modal run probe_generalization/understanding_check.py --smoke-test \\
+    modal run src/understanding_check.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct --formats english chinese
-    modal run probe_generalization/understanding_check.py --smoke-test \\
+    modal run src/understanding_check.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct --formats rot13 base64 leetspeak
 """
 
@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.chat_model import ChatModel
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
-from probe_generalization.shared.prompt_rendering import (ALL_FORMATS,
+from src.shared.prompt_rendering import (ALL_FORMATS,
                                                           build_prompt,
                                                           load_translations,
                                                           looks_like_noise)
@@ -84,13 +84,13 @@ def main(
 
     if translations_path is None:
         translations_path = (
-            "results/probe_generalization/translations_smoketest.jsonl" if
-            smoke_test else "results/probe_generalization/translations.jsonl")
+            "results/src/translations_smoketest.jsonl" if
+            smoke_test else "results/src/translations.jsonl")
     translations = load_translations(Path(translations_path))
 
     if out is None:
         suffix = "_smoketest" if smoke_test else ""
-        out = f"results/probe_generalization/understanding_check{suffix}__{model_slug(model)}.jsonl"
+        out = f"results/src/understanding_check{suffix}__{model_slug(model)}.jsonl"
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

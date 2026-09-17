@@ -13,10 +13,10 @@ docs/probe-generalization-plan.md): evaluating a new format here doesn't
 need to load a previously-saved probe from disk to satisfy that.
 
 Usage:
-    python3 probe_generalization/probe.py --model Qwen/Qwen2.5-7B-Instruct
-    python3 probe_generalization/probe.py --model Qwen/Qwen2.5-7B-Instruct \\
+    python3 src/probe.py --model Qwen/Qwen2.5-7B-Instruct
+    python3 src/probe.py --model Qwen/Qwen2.5-7B-Instruct \\
         --formats letter_spaced
-    python3 probe_generalization/probe.py --model Qwen/Qwen2.5-7B-Instruct \\
+    python3 src/probe.py --model Qwen/Qwen2.5-7B-Instruct \\
         --formats chinese,japanese,spanish,letter_spaced
 """
 
@@ -32,7 +32,7 @@ from sklearn.model_selection import train_test_split
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.modal_infra import model_slug
-from probe_generalization.shared.prompt_rendering import ALL_FORMATS, FORMAT_GROUP
+from src.shared.prompt_rendering import ALL_FORMATS, FORMAT_GROUP
 
 SEED = 0
 TEST_SIZE = 0.2
@@ -57,10 +57,10 @@ def main():
     parser.add_argument("--model", required=True)
     parser.add_argument(
         "--activations-root",
-        default="results/probe_generalization",
+        default="results/src",
         help="Parent of the activations__languages/activations__ciphers "
         "directories written by extract_activations.py.")
-    parser.add_argument("--out-dir", default="results/probe_generalization")
+    parser.add_argument("--out-dir", default="results/src")
     parser.add_argument(
         "--formats",
         default=",".join(DEFAULT_FORMATS),

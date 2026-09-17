@@ -11,9 +11,9 @@ Setup: sign up at https://console.groq.com, generate an API key, add
 GROQ_API_KEY to .env. Double check the current free-tier model name/rate limits.
 
 Usage:
-    python3 probe_generalization/groq_judge_ablation.py \\
+    python3 src/groq_judge_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct --judge-model openai/gpt-oss-20b
-    python3 probe_generalization/groq_judge_ablation.py \\
+    python3 src/groq_judge_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct --track ciphers --conditions baseline
 """
 
@@ -32,11 +32,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.jsonl_output import sort_output_file
 from common.modal_infra import model_slug
-from probe_generalization.shared.ablation_records import (COMPLETION_FIELD,
+from src.shared.ablation_records import (COMPLETION_FIELD,
                                                           FMT_FIELD,
                                                           REQUEST_FIELD,
                                                           sort_key)
-from probe_generalization.shared.judge_prompt import (JUDGE_SYSTEM_PROMPT,
+from src.shared.judge_prompt import (JUDGE_SYSTEM_PROMPT,
                                                       judge_user_turn,
                                                       parse_label)
 
@@ -250,7 +250,7 @@ def main():
                         help="Judge only this track. Default judges both "
                         "(whichever ablation_{track}__*.jsonl files exist).")
     parser.add_argument("--results-dir",
-                        default="results/probe_generalization")
+                        default="results/src")
     parser.add_argument("--resume", action="store_true", default=True)
     parser.add_argument("--no-resume", dest="resume", action="store_false")
     parser.add_argument(

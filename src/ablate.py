@@ -3,12 +3,12 @@ ablate its diff-of-means direction and measure the drop in refusal rate
 across languages and/or ciphers.
 
 Usage:
-    modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct
-    modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
+    modal run src/ablate.py --model Qwen/Qwen2.5-7B-Instruct
+    modal run src/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
         --layers 3,8,14,20
-    modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
+    modal run src/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
         --formats english,chinese,japanese,spanish
-    modal run probe_generalization/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
+    modal run src/ablate.py --model Qwen/Qwen2.5-7B-Instruct \\
         --formats letter_spaced --layers "" --max-prompts 100
 """
 
@@ -25,11 +25,11 @@ from common.data import load_harmful_csv
 from common.dataset import LabeledRequest
 from common.jsonl_output import sort_output_file
 from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
-from probe_generalization.shared.ablation_records import (
+from src.shared.ablation_records import (
     BASELINE, FMT_FIELD, CipherAblationRecord, LanguageAblationRecord,
     sort_key)
-from probe_generalization.shared.modal_app import AblationChatModel
-from probe_generalization.shared.prompt_rendering import (ALL_FORMATS,
+from src.shared.modal_app import AblationChatModel
+from src.shared.prompt_rendering import (ALL_FORMATS,
                                                           FORMAT_GROUP,
                                                           TEST_LANGUAGES,
                                                           build_prompt,
@@ -73,8 +73,8 @@ def main(
     max_new_tokens: int = 256,
     layers: str = None,
     formats: str = "english",
-    translations_path: str = "results/probe_generalization/translations.jsonl",
-    out_dir: str = "results/probe_generalization",
+    translations_path: str = "results/src/translations.jsonl",
+    out_dir: str = "results/src",
     resume: bool = True,
 ):
     formats = formats.split(",")
@@ -92,7 +92,7 @@ def main(
         candidate_layers = []
     else:
         if probes_path is None:
-            probes_path = f"results/probe_generalization/probes/{slug}.npz"
+            probes_path = f"results/src/probes/{slug}.npz"
         probes_path = Path(probes_path)
         if not probes_path.exists():
             raise SystemExit(

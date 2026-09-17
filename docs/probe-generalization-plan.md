@@ -114,7 +114,7 @@ conditions. Sequenced in two phases rather than run all at once (see §8):
   consistency). Activation extraction is one forward pass per (prompt, format, model) — no
   generation needed — so this is materially cheaper than the refusal-gap behavioral sweep despite
   more conditions, even at this scale. Translation-quality verification at n=572 is calibrated by 
-  manual review of a random sample per language (`probe_generalization/sample_for_review.py`).
+  manual review of a random sample per language (`src/sample_for_review.py`).
 
 ## 6. Datasets
 
@@ -128,7 +128,7 @@ conditions. Sequenced in two phases rather than run all at once (see §8):
     Switched to DeepL for higher quality, accepting the external-API/privacy tradeoff.
     Manual review via `sample_for_review.py` is now the primary QA mechanism (see §5).
   - Test formats — ciphers: ROT13, Base64, Leetspeak (reuse
-    `refusal_gap/ciphers.py` where the cipher implementation is shared) as the starting set.
+    `common/ciphers.py` where the cipher implementation is shared) as the starting set.
     Open-ended: add more ciphers as they come up, including purpose-designed ones aimed at
     disrupting representations (not just obfuscating text) rather than only reusing standard
     textbook ciphers — see §10.
@@ -139,22 +139,22 @@ conditions. Sequenced in two phases rather than run all at once (see §8):
 ## 7. Tooling
 
 - `common/modal_infra.py` for model loading / HF cache, shared with refusal_gap.
-- DeepL API (`probe_generalization/deepl_translate.py`) for English→{Chinese, Japanese, Spanish}
+- DeepL API (`src/deepl_translate.py`) for English→{Chinese, Japanese, Spanish}
   translation — external, needs `DEEPL_API_KEY` in `.env` file. No refusal risk, but sends harmful-prompt text to a third party.
 - Forward hooks (raw `transformers` hooks are enough here — no patching/ablation needed).
 - scikit-learn `LogisticRegression` (or equivalent) for the linear probe, matching Arditi et al.
 
 ## 8. Experimental pipeline
 
-**Step 0 — Environment setup.** Format renderers (`probe_generalization/formats.py`): language
+**Step 0 — Environment setup.** Format renderers (`src/shared/formats.py`): language
 translation + verification, cipher encoding (reuse refusal_gap ciphers). Activation-extraction
-Modal method (`probe_generalization/modal_app.py`): forward pass, hook at *every* layer, return
+Modal method (`src/shared/modal_app.py`): forward pass, hook at *every* layer, return
 pooled (last-token) residual-stream vectors — saving all layers costs one forward pass either way.
 
 ### Phase A — language reproduction
 
 **Step A0.5 — Manual translation error-rate calibration.** After `translate_prompts.py`, run
-`probe_generalization/sample_for_review.py` to generate a per-language Markdown sample for 
+`src/sample_for_review.py` to generate a per-language Markdown sample for 
 manual read-through (see §5) and record the error rates.
 
 **Step A1 — Decode/understanding check.** Before training any probe, confirm (for each model)

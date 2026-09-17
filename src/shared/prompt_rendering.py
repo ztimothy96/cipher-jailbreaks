@@ -11,7 +11,7 @@ from pathlib import Path
 
 from common.ciphers import ALL_CIPHERS
 from common.dataset import LabeledRequest
-from probe_generalization.shared.formats import TEST_LANGUAGES
+from src.shared.formats import TEST_LANGUAGES
 
 LANGUAGE_SYSTEM_PROMPT_TEMPLATE = (
     "You are a helpful assistant. Respond in {language}, the same language "

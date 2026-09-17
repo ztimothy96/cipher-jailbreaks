@@ -1,14 +1,14 @@
 """Translate the probe dataset into Chinese/Japanese/Spanish via the DeepL
 API.
 
-QA is manual review of a random sample (probe_generalization/
+QA is manual review of a random sample (src/
 sample_for_review.py).
 
-Setup: see probe_generalization/deepl_translate.py (DEEPL_API_KEY / .env).
+Setup: see src/deepl_translate.py (DEEPL_API_KEY / .env).
 
 Usage:
-    python3 probe_generalization/translate_prompts.py --smoke-test
-    python3 probe_generalization/translate_prompts.py \\
+    python3 src/translate_prompts.py --smoke-test
+    python3 src/translate_prompts.py \\
         --harmful-csv path/to/advbench.csv --harmless-csv path/to/harmless.csv
 """
 
@@ -20,8 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
-from probe_generalization.shared.deepl_translate import batch_translate, get_translator
-from probe_generalization.shared.formats import LANGUAGE_CODES, TEST_LANGUAGES
+from src.shared.deepl_translate import batch_translate, get_translator
+from src.shared.formats import LANGUAGE_CODES, TEST_LANGUAGES
 
 
 def load_completed(out_path: Path) -> set[tuple[int, int, str]]:
@@ -65,9 +65,9 @@ def main():
         )
 
     if args.out is None:
-        args.out = ("results/probe_generalization/translations_smoketest.jsonl"
+        args.out = ("results/src/translations_smoketest.jsonl"
                    if args.smoke_test else
-                   "results/probe_generalization/translations.jsonl")
+                   "results/src/translations.jsonl")
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

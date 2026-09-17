@@ -8,5 +8,5 @@ Languages" (arXiv 2505.17306). Apache 2.0 (LICENSE in this directory).
 prompts) are the English test split, copied unmodified. Harmful prompts are HarmBench-style
 (categorized); harmless prompts are Alpaca-style instructions.
 
-`probe_generalization/prepare_polyrefuse_dataset.py` converts these into the CSV format
-`probe_generalization/dataset.py` expects.
+`src/prepare_polyrefuse_dataset.py` converts these into the CSV format
+`common/dataset.py` expects.

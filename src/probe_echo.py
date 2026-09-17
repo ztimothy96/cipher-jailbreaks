@@ -14,8 +14,8 @@ rather than averaging per-fold AUROCs (which can be dominated by the very
 few ECHO examples landing in any given fold).
 
 Usage:
-    python3 probe_generalization/probe_echo.py --model Qwen/Qwen2.5-7B-Instruct
-    python3 probe_generalization/probe_echo.py --model Qwen/Qwen2.5-7B-Instruct \\
+    python3 src/probe_echo.py --model Qwen/Qwen2.5-7B-Instruct
+    python3 src/probe_echo.py --model Qwen/Qwen2.5-7B-Instruct \\
         --cipher letter_spaced --condition baseline --max-prompts 100
 """
 
@@ -33,7 +33,7 @@ from sklearn.model_selection import StratifiedKFold
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.modal_infra import model_slug
-from probe_generalization.shared.prompt_rendering import FORMAT_GROUP
+from src.shared.prompt_rendering import FORMAT_GROUP
 
 SEED = 0
 N_FOLDS = 5
@@ -63,8 +63,8 @@ def main():
     parser.add_argument("--condition", default="baseline")
     parser.add_argument("--max-prompts", type=int, default=None)
     parser.add_argument("--activations-root",
-                        default="results/probe_generalization")
-    parser.add_argument("--results-dir", default="results/probe_generalization")
+                        default="results/src")
+    parser.add_argument("--results-dir", default="results/src")
     args = parser.parse_args()
 
     slug = model_slug(args.model)

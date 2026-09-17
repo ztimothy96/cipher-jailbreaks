@@ -3,15 +3,14 @@ This project aims to understand how cipher-based jailbreak attacks bypass model 
 - save compute budget, and
 - avoid jailbreaking large models that could actually cause damage.
 
-![polyrefuse-ablation](results/probe_generalization/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages__even_layers.png)
+![polyrefuse-ablation](results/src/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages__even_layers.png)
 
-There are two main sections of the experiment.
-- probe_generalization: reproduces the PolyRefuse paper (a refusal direction that generalizes across natural languages by ablating layers), and extends the same probe/ablation machinery to cipher formats — this is the sole generator of behavioral data (baseline and ablated) for both tracks.
-- refusal_gap: the cipher decode-comprehension screen. Checks whether the model can actually decode a cipher back to English at all (scored against ground truth), before trusting any probe or ablation result on that format.
+There are two main threads of the experiment, both living in `src/`:
+- PolyRefuse paper replication: find a refusal direction that generalizes across natural languages by ablating layers. and extends the same probe/ablation machinery to cipher formats.
+- Cipher formats: check whether the model can decode ciphers back to English, measure compliance gap compared to plaintext, perform ablation to find relevant layers.
 
 ## Structure
-The experimental pipeline consists of several standalone Python scripts. Raw model responses and judged scores are written to output .jsonl files, then summary tables and figures are derived from them.
-- All behavioral generation (baseline and ablated, languages and ciphers) is written under `results/probe_generalization/` by `probe_generalization/ablate.py` — pass `--layers ""` for baseline-only. `results/refusal_gap/` holds only decode-comprehension-check output.
+The experimental pipeline consists of several standalone Python scripts under `src/`. Raw model responses and judged scores are written to output .jsonl files under `results/src/`, then summary tables and figures are derived from them.
 
 ## Current findings
 On Qwen2.5-7b.

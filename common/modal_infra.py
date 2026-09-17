@@ -1,10 +1,10 @@
 """
 Shared Modal infrastructure for all experiments in this repo: one App, one
 base image, one HF-weights cache volume. Experiment-specific `@app.cls`
-definitions (e.g. refusal_gap/modal_app.py, probe_generalization/modal_app.py)
-import from here rather than each declaring their own app/image/volume, so
-containers across experiments share the cached model weights and don't
-fragment the Modal app namespace.
+definitions (e.g. src/shared/modal_app.py) import from here rather than
+each declaring their own app/image/volume, so containers across
+experiments share the cached model weights and don't fragment the Modal
+app namespace.
 
 Auth: run `pip install modal && modal setup` once (interactive browser login)
 before using anything here.
@@ -44,7 +44,7 @@ image = modal.Image.debian_slim(python_version="3.11").pip_install(
     "transformers>=4.44",
     "accelerate",
     "sentencepiece",
-).add_local_python_source("common", "refusal_gap", "probe_generalization")
+).add_local_python_source("common", "src")
 
 # Persists the Hugging Face cache across runs/cold-starts, and across
 # experiments, so the ~15GB model download only happens once.

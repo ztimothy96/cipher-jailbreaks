@@ -3,11 +3,11 @@ per model, saving the last-token residual stream at every layer (see
 ActivationExtractor.extract in modal_app.py).
 
 Usage:
-    modal run probe_generalization/extract_activations.py --smoke-test \\
+    modal run src/extract_activations.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct --format-group languages
-    modal run probe_generalization/extract_activations.py --smoke-test \\
+    modal run src/extract_activations.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct --format-group ciphers
-    modal run probe_generalization/extract_activations.py \\
+    modal run src/extract_activations.py \\
         --model Qwen/Qwen2.5-7B-Instruct --format-group ciphers \\
         --formats letter_spaced
 """
@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.dataset import load_probe_dataset, load_smoke_test_dataset
 from common.modal_infra import DEFAULT_MODEL, app, gpu_for, model_slug
-from probe_generalization.shared.modal_app import ActivationExtractor
-from probe_generalization.shared.prompt_rendering import (FORMATS_BY_GROUP,
+from src.shared.modal_app import ActivationExtractor
+from src.shared.prompt_rendering import (FORMATS_BY_GROUP,
                                                           build_prompt,
                                                           load_translations)
 
@@ -99,14 +99,14 @@ def main(
 
     if translations_path is None:
         translations_path = (
-            "results/probe_generalization/translations_smoketest.jsonl" if
-            smoke_test else "results/probe_generalization/translations.jsonl")
+            "results/src/translations_smoketest.jsonl" if
+            smoke_test else "results/src/translations.jsonl")
     translations = load_translations(
         Path(translations_path)) if format_group == "languages" else {}
 
     if out_dir is None:
         suffix = "_smoketest" if smoke_test else ""
-        out_dir = f"results/probe_generalization/activations{suffix}__{format_group}"
+        out_dir = f"results/src/activations{suffix}__{format_group}"
     out_dir_path = Path(out_dir) / model_slug(model)
     out_dir_path.mkdir(parents=True, exist_ok=True)
 

@@ -2,9 +2,9 @@
 local PNG.
 
 Usage:
-    python3 probe_generalization/plot_probe_results.py \\
+    python3 src/plot_probe_results.py \\
         --model Qwen/Qwen2.5-7B-Instruct
-    python3 probe_generalization/plot_probe_results.py \\
+    python3 src/plot_probe_results.py \\
         --model Qwen/Qwen2.5-7B-Instruct --formats english,letter_spaced
 """
 
@@ -54,7 +54,7 @@ MAX_SAFE_SERIES = len(COLOR_ORDER)
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
-    parser.add_argument("--results-dir", default="results/probe_generalization")
+    parser.add_argument("--results-dir", default="results/src")
     parser.add_argument(
         "--formats",
         default=None,

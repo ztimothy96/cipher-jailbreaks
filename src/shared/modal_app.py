@@ -1,6 +1,7 @@
 """Modal classes for the probe-generalization experiment: activation
-extraction (Phase A/B). Shares the app/image/HF-cache volume with
-refusal_gap via common/modal_infra.py.
+extraction (Phase A/B) and ablated generation (Step C). Shares the
+app/image/HF-cache volume with the rest of the repo via
+common/modal_infra.py.
 """
 
 import modal

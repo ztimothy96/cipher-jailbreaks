@@ -7,8 +7,8 @@ errors found by manual review of a smoke test. Back-translation kept silently
 "fixing" the defect it was supposed to help catch, so it was removed.
 
 Usage:
-    python3 probe_generalization/sample_for_review.py \\
-        --translations results/probe_generalization/translations.jsonl \\
+    python3 src/sample_for_review.py \\
+        --translations results/src/translations.jsonl \\
         --sample-size 30 --seed 0
 """
 
@@ -23,9 +23,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--translations",
-        default="results/probe_generalization/translations.jsonl")
+        default="results/src/translations.jsonl")
     parser.add_argument("--out-dir",
-                        default="results/probe_generalization/review")
+                        default="results/src/review")
     parser.add_argument(
         "--sample-size",
         type=int,

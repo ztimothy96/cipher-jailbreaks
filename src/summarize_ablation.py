@@ -5,9 +5,9 @@ sort to the top. Plots the results as a line chart.
 Uses the LLM-judge label from groq_judge_ablation.py as the metric.
 
 Usage:
-    python3 probe_generalization/summarize_ablation.py \\
+    python3 src/summarize_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct
-    python3 probe_generalization/summarize_ablation.py \\
+    python3 src/summarize_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct --track ciphers
 """
 
@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.modal_infra import model_slug
-from probe_generalization.shared.ablation_records import FMT_FIELD
-from probe_generalization.shared.judge_prompt import VALID_LABELS
+from src.shared.ablation_records import FMT_FIELD
+from src.shared.judge_prompt import VALID_LABELS
 
 # Stack order (bottom to top) — REFUSE/COMPLY first since they're the
 # meaningful outcomes; ECHO/UNCLEAR (~gibberish) last since they mean the
@@ -290,7 +290,7 @@ def main():
                         choices=["languages", "ciphers"],
                         default="languages")
     parser.add_argument("--results-dir",
-                        default="results/probe_generalization")
+                        default="results/src")
     parser.add_argument(
         "--max-prompts",
         type=int,

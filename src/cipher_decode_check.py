@@ -8,7 +8,7 @@ scored directly against the known original text with difflib.SequenceMatcher.rat
 The raw score is always stored so a threshold can be applied later via rescan_checks.py-style reprocessing.
 
 Usage:
-    modal run refusal_gap/cipher_decode_check.py --smoke-test \\
+    modal run src/cipher_decode_check.py --smoke-test \\
         --model Qwen/Qwen2.5-7B-Instruct
 """
 
@@ -130,7 +130,7 @@ def main(
 
     if out is None:
         suffix = "_smoketest" if smoke_test else ""
-        out = f"results/refusal_gap/cipher_decode_check{suffix}__{model_slug(model)}.jsonl"
+        out = f"results/src/cipher_decode_check{suffix}__{model_slug(model)}.jsonl"
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,8 +1,8 @@
 """Converts data/polyrefuse/*.json (see data/polyrefuse/README.md) into the
-CSV format probe_generalization/dataset.py expects.
+CSV format src/dataset.py expects.
 
 Usage:
-    python3 probe_generalization/prepare_polyrefuse_dataset.py
+    python3 src/prepare_polyrefuse_dataset.py
 """
 
 import json
