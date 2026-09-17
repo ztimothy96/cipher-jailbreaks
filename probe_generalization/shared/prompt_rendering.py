@@ -67,8 +67,7 @@ def build_prompt(fmt: str, req: LabeledRequest,
 
 
 def looks_like_noise(text: str) -> bool:
-    """Crude noise filter, same spirit as refusal_gap's
-    looks_like_decode_noise — not a real understanding check. A refusal is
+    """Crude noise filter only, not a real understanding check. A refusal is
     NOT noise (it's coherent evidence the model understood the request), so
     this only catches empty/degenerate output."""
     letters = sum(c.isalpha() for c in text)

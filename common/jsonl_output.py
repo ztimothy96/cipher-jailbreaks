@@ -1,5 +1,5 @@
 """Shared helpers for the append-only JSONL result files written by the
-Modal entrypoints (measure_refusal_gap.py, cipher_decode_check.py, ...)."""
+Modal entrypoints (ablate.py, cipher_decode_check.py, ...)."""
 
 import json
 from pathlib import Path

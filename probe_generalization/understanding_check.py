@@ -2,8 +2,7 @@
 engages with a harmful/harmless request in a given non-English-plaintext
 format (language or cipher) before trusting any probe result on that format.
 A format the model can't parse isn't a probe-generalization result, it's a
-capability gap. Mirrors refusal_gap's decode_looks_valid check. Resumable,
-same pattern as refusal_gap/measure_refusal_gap.py.
+capability gap. Resumable, same pattern as ablate.py.
 
 Prompt-rendering logic (build_prompt, load_translations, format lists) lives
 in prompt_rendering.py, not here — extract_activations.py needs the same

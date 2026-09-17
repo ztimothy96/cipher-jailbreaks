@@ -6,12 +6,12 @@ This project aims to understand how cipher-based jailbreak attacks bypass model 
 ![polyrefuse-ablation](results/probe_generalization/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages__even_layers.png)
 
 There are two main sections of the experiment.
-- probe_generalization: reproduces the PolyRefuse paper, finding a refusal direction that generalizes across many natural languages by ablating layers.
-- refusal_gap: the cipher branch of the project. Tests models' ability to decode ciphers and measures baseline refusal/compliance rate across ciphers. Analyze the cipher's effect on the multilingual refusal direction.
+- probe_generalization: reproduces the PolyRefuse paper (a refusal direction that generalizes across natural languages by ablating layers), and extends the same probe/ablation machinery to cipher formats — this is the sole generator of behavioral data (baseline and ablated) for both tracks.
+- refusal_gap: the cipher decode-comprehension screen. Checks whether the model can actually decode a cipher back to English at all (scored against ground truth), before trusting any probe or ablation result on that format.
 
 ## Structure
 The experimental pipeline consists of several standalone Python scripts. Raw model responses and judged scores are written to output .jsonl files, then summary tables and figures are derived from them.
-- Raw data for languages should be stored in probe_generalization, ciphers in refusal_gap.
+- All behavioral generation (baseline and ablated, languages and ciphers) is written under `results/probe_generalization/` by `probe_generalization/ablate.py` — pass `--layers ""` for baseline-only. `results/refusal_gap/` holds only decode-comprehension-check output.
 
 ## Current findings
 On Qwen2.5-7b.

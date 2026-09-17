@@ -2,7 +2,7 @@
 cipher-decode-check and probe-generalization scripts.
 
 Every prompt here is a binary classification example (label = harmful),
-unlike measure_refusal_gap.py where only harmful prompts are dispatched.
+unlike ablate.py where only harmful prompts are dispatched.
 Reuses common/data.py's CSV loaders so every script can point at the same
 HarmBench/AdvBench-style source files.
 """

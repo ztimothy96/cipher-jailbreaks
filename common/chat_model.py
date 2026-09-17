@@ -51,7 +51,7 @@ class ChatModel:
     # A modal.parameter makes model_name part of the instance's identity: a
     # ChatModel(model_name="a") and ChatModel(model_name="b") spin up as
     # separate containers rather than silently sharing state. Callers should
-    # always pass this explicitly (see measure_refusal_gap.py) and record it
+    # always pass this explicitly (see cipher_decode_check.py) and record it
     # in the output alongside every completion.
     model_name: str = modal.parameter(default=DEFAULT_MODEL)
 
