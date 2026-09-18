@@ -84,13 +84,13 @@ def main(
 
     if translations_path is None:
         translations_path = (
-            "results/src/translations_smoketest.jsonl" if
-            smoke_test else "results/src/translations.jsonl")
+            "results/raw/translations_smoketest.jsonl" if
+            smoke_test else "results/raw/translations.jsonl")
     translations = load_translations(Path(translations_path))
 
     if out is None:
         suffix = "_smoketest" if smoke_test else ""
-        out = f"results/src/understanding_check{suffix}__{model_slug(model)}.jsonl"
+        out = f"results/raw/understanding_check{suffix}__{model_slug(model)}.jsonl"
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

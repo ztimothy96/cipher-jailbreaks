@@ -78,7 +78,7 @@ def load_judge_labels(results_dir: Path, model: str, track: str, fmt: str,
     """prompt_id -> judge_label, restricted to wanted_labels (e.g. {"REFUSE",
     "COMPLY"} or {"ECHO"})."""
     slug = model_slug(model)
-    path = results_dir / f"ablation_judged_{track}__{slug}.jsonl"
+    path = results_dir / "raw" / f"ablation_judged_{track}__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
             f"Missing {path} — run ablate.py and groq_judge_ablation.py first."
@@ -225,14 +225,15 @@ def evaluate(model: str,
             "__with_assumed_benign" if include_benign_as_comply else "",
             "__with_echo" if include_echo else "",
         ])
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / (
+        tables_dir = out_dir / "tables"
+        tables_dir.mkdir(parents=True, exist_ok=True)
+        out_path = tables_dir / (
             f"probe_compliance__{model_slug(model)}__{track}__{fmt}"
             f"{suffix}.csv")
         df.to_csv(out_path, index=False)
         log(f"Saved {out_path}")
 
-        scores_path = out_dir / (
+        scores_path = tables_dir / (
             f"probe_compliance_scores__{model_slug(model)}__{track}__{fmt}"
             f"{suffix}.csv")
         scores_df.to_csv(scores_path, index=False)
@@ -357,10 +358,10 @@ def main():
         action="store_true",
         help="Also score ECHO-judged examples for every judged-framing "
         "format, plotted as a third class.")
-    parser.add_argument("--activations-root", default="results/src")
-    parser.add_argument("--probes-root", default="results/src/probes")
-    parser.add_argument("--results-dir", default="results/src")
-    parser.add_argument("--out-dir", default="results/src")
+    parser.add_argument("--activations-root", default="results")
+    parser.add_argument("--probes-root", default="results/probes")
+    parser.add_argument("--results-dir", default="results")
+    parser.add_argument("--out-dir", default="results")
     parser.add_argument("--out", default=None, help="Plot output path.")
     args = parser.parse_args()
 
@@ -410,7 +411,9 @@ def main():
     else:
         slug = model_slug(args.model)
         fmt_slug = "_".join(fmt for _, fmt in format_specs)
-        out_path = results_dir / f"probe_compliance_trend__{slug}__{fmt_slug}.png"
+        figures_dir = out_dir / "figures"
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        out_path = figures_dir / f"probe_compliance_trend__{slug}__{fmt_slug}.png"
     fig.savefig(out_path, bbox_inches="tight")
     print(f"Saved {out_path}")
 

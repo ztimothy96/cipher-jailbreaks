@@ -8,7 +8,7 @@ nothing to do with generation.
 
 Usage:
     python3 src/rescan_checks.py \\
-        --in results/src/understanding_check__Qwen__Qwen2.5-7B-Instruct.jsonl
+        --in results/raw/understanding_check__Qwen__Qwen2.5-7B-Instruct.jsonl
 """
 
 import argparse

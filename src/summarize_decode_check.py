@@ -91,7 +91,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
     parser.add_argument("--results-dir",
-                        default="results/src")
+                        default="results")
     parser.add_argument(
         "--smoke-test",
         action="store_true",
@@ -125,7 +125,8 @@ def main():
     else:
         suffix = "_smoketest" if args.smoke_test else ""
         path = Path(
-            args.results_dir) / f"cipher_decode_check{suffix}__{slug}.jsonl"
+            args.results_dir
+        ) / "raw" / f"cipher_decode_check{suffix}__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
             f"Missing {path} — run cipher_decode_check.py first "
@@ -153,7 +154,9 @@ def main():
     if args.plot:
         plot_path = Path(args.plot)
     else:
-        plot_path = path.with_suffix(".png")
+        plot_path = (Path(args.results_dir) / "figures" /
+                    path.with_suffix(".png").name)
+        plot_path.parent.mkdir(parents=True, exist_ok=True)
     plot_decode_scores(df, plot_path)
     print(f"Wrote plot to {plot_path}")
 

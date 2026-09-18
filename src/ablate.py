@@ -73,8 +73,8 @@ def main(
     max_new_tokens: int = 256,
     layers: str = None,
     formats: str = "english",
-    translations_path: str = "results/src/translations.jsonl",
-    out_dir: str = "results/src",
+    translations_path: str = "results/raw/translations.jsonl",
+    out_dir: str = "results",
     resume: bool = True,
 ):
     formats = formats.split(",")
@@ -92,7 +92,7 @@ def main(
         candidate_layers = []
     else:
         if probes_path is None:
-            probes_path = f"results/src/probes/{slug}.npz"
+            probes_path = f"results/probes/{slug}.npz"
         probes_path = Path(probes_path)
         if not probes_path.exists():
             raise SystemExit(
@@ -115,7 +115,7 @@ def main(
         for i, t in enumerate(harmful_texts)
     ]
 
-    out_dir_path = Path(out_dir)
+    out_dir_path = Path(out_dir) / "raw"
     out_dir_path.mkdir(parents=True, exist_ok=True)
     out_paths = {
         track: out_dir_path / f"ablation_{track}__{slug}.jsonl"

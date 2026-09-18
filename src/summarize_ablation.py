@@ -44,7 +44,7 @@ def save_ablation_results(args: argparse.Namespace):
     slug = model_slug(args.model)
     fmt_field = FMT_FIELD[args.track]
     path = Path(
-        args.results_dir) / f"ablation_judged_{args.track}__{slug}.jsonl"
+        args.results_dir) / "raw" / f"ablation_judged_{args.track}__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
             f"Missing {path} — run ablate.py and groq_judge_ablation.py first."
@@ -118,7 +118,8 @@ def save_ablation_results(args: argparse.Namespace):
 
     out_path = Path(
         args.results_dir
-    ) / f"ablation_summary__{slug}__{metric_name}__{args.track}.csv"
+    ) / "tables" / f"ablation_summary__{slug}__{metric_name}__{args.track}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_path, index=False)
     print(f"\nSaved {out_path} (metric={metric_name})")
 
@@ -128,7 +129,7 @@ def plot_ablation_results(args: argparse.Namespace):
     metric_name = "judge"
     csv_path = Path(
         args.results_dir
-    ) / f"ablation_summary__{slug}__{metric_name}__{args.track}.csv"
+    ) / "tables" / f"ablation_summary__{slug}__{metric_name}__{args.track}.csv"
     if not csv_path.exists():
         print(f"No {csv_path} — skipping the refusal-rate-by-layer chart.")
         return
@@ -174,7 +175,8 @@ def plot_ablation_results(args: argparse.Namespace):
     suffix = "__even_layers" if args.even_layers_only else ""
     out_path = Path(
         args.results_dir
-    ) / f"ablation_summary__{slug}__{metric_name}__{args.track}{suffix}.png"
+    ) / "figures" / f"ablation_summary__{slug}__{metric_name}__{args.track}{suffix}.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path)
     print(f"Saved {out_path} (metric={metric_name}, "
           f"even_layers_only={args.even_layers_only})")
@@ -188,7 +190,7 @@ def save_label_breakdown(args: argparse.Namespace):
     slug = model_slug(args.model)
     fmt_field = FMT_FIELD[args.track]
     path = Path(
-        args.results_dir) / f"ablation_judged_{args.track}__{slug}.jsonl"
+        args.results_dir) / "raw" / f"ablation_judged_{args.track}__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
             f"Missing {path} — run ablate.py and groq_judge_ablation.py first."
@@ -225,7 +227,9 @@ def save_label_breakdown(args: argparse.Namespace):
     out = pd.DataFrame(rows).sort_values(["format", "layer"])
 
     out_path = Path(
-        args.results_dir) / f"ablation_label_breakdown__{slug}__{args.track}.csv"
+        args.results_dir
+    ) / "tables" / f"ablation_label_breakdown__{slug}__{args.track}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_path, index=False)
     print(f"Saved {out_path}")
 
@@ -233,7 +237,8 @@ def save_label_breakdown(args: argparse.Namespace):
 def plot_label_breakdown(args: argparse.Namespace):
     slug = model_slug(args.model)
     csv_path = Path(
-        args.results_dir) / f"ablation_label_breakdown__{slug}__{args.track}.csv"
+        args.results_dir
+    ) / "tables" / f"ablation_label_breakdown__{slug}__{args.track}.csv"
     df = pd.read_csv(csv_path)
 
     formats = sorted(df["format"].unique())
@@ -278,7 +283,8 @@ def plot_label_breakdown(args: argparse.Namespace):
     suffix = "__even_layers" if args.even_layers_only else ""
     out_path = Path(
         args.results_dir
-    ) / f"ablation_label_breakdown__{slug}__{args.track}{suffix}.png"
+    ) / "figures" / f"ablation_label_breakdown__{slug}__{args.track}{suffix}.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, bbox_inches="tight")
     print(f"Saved {out_path}")
 
@@ -290,7 +296,7 @@ def main():
                         choices=["languages", "ciphers"],
                         default="languages")
     parser.add_argument("--results-dir",
-                        default="results/src")
+                        default="results")
     parser.add_argument(
         "--max-prompts",
         type=int,

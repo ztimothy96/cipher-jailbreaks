@@ -54,7 +54,7 @@ MAX_SAFE_SERIES = len(COLOR_ORDER)
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
-    parser.add_argument("--results-dir", default="results/src")
+    parser.add_argument("--results-dir", default="results")
     parser.add_argument(
         "--formats",
         default=None,
@@ -64,7 +64,7 @@ def main():
     args = parser.parse_args()
 
     slug = model_slug(args.model)
-    csv_path = Path(args.results_dir) / f"probe_results__{slug}.csv"
+    csv_path = Path(args.results_dir) / "tables" / f"probe_results__{slug}.csv"
     df = pd.read_csv(csv_path)
 
     if args.formats is not None:
@@ -100,7 +100,9 @@ def main():
         out_path = Path(args.out)
     else:
         suffix = f"__{'_'.join(sorted(df['format'].unique()))}" if args.formats else ""
-        out_path = Path(args.results_dir) / f"probe_results__{slug}{suffix}.png"
+        out_path = Path(
+            args.results_dir) / "figures" / f"probe_results__{slug}{suffix}.png"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path)
     print(f"Saved {out_path}")
 

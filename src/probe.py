@@ -57,10 +57,10 @@ def main():
     parser.add_argument("--model", required=True)
     parser.add_argument(
         "--activations-root",
-        default="results/src",
+        default="results",
         help="Parent of the activations__languages/activations__ciphers "
         "directories written by extract_activations.py.")
-    parser.add_argument("--out-dir", default="results/src")
+    parser.add_argument("--out-dir", default="results")
     parser.add_argument(
         "--formats",
         default=",".join(DEFAULT_FORMATS),
@@ -150,7 +150,8 @@ def main():
                         test_idx=test_idx)
     print(f"\nSaved probe weights to {probes_path}")
 
-    results_path = out_dir / f"probe_results__{model_slug(args.model)}.csv"
+    results_path = out_dir / "tables" / f"probe_results__{model_slug(args.model)}.csv"
+    results_path.parent.mkdir(parents=True, exist_ok=True)
     new_df = pd.DataFrame(rows)
     # Merge rather than overwrite: this run only recomputed rows for
     # `args.model` and formats in {"english"} | set(formats) — replace just

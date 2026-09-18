@@ -63,15 +63,15 @@ def main():
     parser.add_argument("--condition", default="baseline")
     parser.add_argument("--max-prompts", type=int, default=None)
     parser.add_argument("--activations-root",
-                        default="results/src")
-    parser.add_argument("--results-dir", default="results/src")
+                        default="results")
+    parser.add_argument("--results-dir", default="results")
     args = parser.parse_args()
 
     slug = model_slug(args.model)
     track = FORMAT_GROUP[args.cipher]
 
     judged_path = Path(
-        args.results_dir) / f"ablation_judged_{track}__{slug}.jsonl"
+        args.results_dir) / "raw" / f"ablation_judged_{track}__{slug}.jsonl"
     if not judged_path.exists():
         raise SystemExit(f"Missing {judged_path} — run ablate.py and "
                          f"groq_judge_ablation.py first.")
@@ -133,7 +133,8 @@ def main():
 
     out_path = Path(
         args.results_dir
-    ) / f"echo_probe__{slug}__{args.cipher}__{args.condition}.csv"
+    ) / "tables" / f"echo_probe__{slug}__{args.cipher}__{args.condition}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out.sort_values("layer").to_csv(out_path, index=False)
     print(f"\nSaved {out_path}")
 
@@ -153,7 +154,8 @@ def main():
 
     png_path = Path(
         args.results_dir
-    ) / f"echo_probe__{slug}__{args.cipher}__{args.condition}.png"
+    ) / "figures" / f"echo_probe__{slug}__{args.cipher}__{args.condition}.png"
+    png_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(png_path)
     print(f"Saved {png_path}")
 

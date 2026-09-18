@@ -8,7 +8,7 @@ errors found by manual review of a smoke test. Back-translation kept silently
 
 Usage:
     python3 src/sample_for_review.py \\
-        --translations results/src/translations.jsonl \\
+        --translations results/raw/translations.jsonl \\
         --sample-size 30 --seed 0
 """
 
@@ -23,9 +23,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--translations",
-        default="results/src/translations.jsonl")
+        default="results/raw/translations.jsonl")
     parser.add_argument("--out-dir",
-                        default="results/src/review")
+                        default="results/review")
     parser.add_argument(
         "--sample-size",
         type=int,

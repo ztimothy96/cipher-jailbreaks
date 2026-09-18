@@ -99,14 +99,14 @@ def main(
 
     if translations_path is None:
         translations_path = (
-            "results/src/translations_smoketest.jsonl" if
-            smoke_test else "results/src/translations.jsonl")
+            "results/raw/translations_smoketest.jsonl" if
+            smoke_test else "results/raw/translations.jsonl")
     translations = load_translations(
         Path(translations_path)) if format_group == "languages" else {}
 
     if out_dir is None:
         suffix = "_smoketest" if smoke_test else ""
-        out_dir = f"results/src/activations{suffix}__{format_group}"
+        out_dir = f"results/activations{suffix}__{format_group}"
     out_dir_path = Path(out_dir) / model_slug(model)
     out_dir_path.mkdir(parents=True, exist_ok=True)
 

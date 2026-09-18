@@ -3,14 +3,14 @@ This project aims to understand how cipher-based jailbreak attacks bypass model 
 - save compute budget, and
 - avoid jailbreaking large models that could actually cause damage.
 
-![polyrefuse-ablation](results/src/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages__even_layers.png)
+![polyrefuse-ablation](results/figures/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages__even_layers.png)
 
 There are two main threads of the experiment, both living in `src/`:
 - PolyRefuse paper replication: find a refusal direction that generalizes across natural languages by ablating layers. and extends the same probe/ablation machinery to cipher formats.
 - Cipher formats: check whether the model can decode ciphers back to English, measure compliance gap compared to plaintext, perform ablation to find relevant layers.
 
 ## Structure
-The experimental pipeline consists of several standalone Python scripts under `src/`. Raw model responses and judged scores are written to output .jsonl files under `results/src/`, then summary tables and figures are derived from them.
+The experimental pipeline consists of several standalone Python scripts under `src/`. Raw model responses and judged scores are written to output .jsonl files under `results/raw/`, then summary tables (`results/tables/`) and figures (`results/figures/`) are derived from them. Cached activations/probes live under `results/activations__*/` and `results/probes/`.
 
 ## Current findings
 On Qwen2.5-7b.

@@ -65,9 +65,9 @@ def main():
         )
 
     if args.out is None:
-        args.out = ("results/src/translations_smoketest.jsonl"
+        args.out = ("results/raw/translations_smoketest.jsonl"
                    if args.smoke_test else
-                   "results/src/translations.jsonl")
+                   "results/raw/translations.jsonl")
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

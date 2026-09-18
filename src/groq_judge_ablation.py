@@ -125,7 +125,8 @@ def judge_track(args, track: str, slug: str):
     request_field = REQUEST_FIELD[track]
     completion_field = COMPLETION_FIELD[track]
 
-    ablation_path = Path(args.results_dir) / f"ablation_{track}__{slug}.jsonl"
+    ablation_path = Path(
+        args.results_dir) / "raw" / f"ablation_{track}__{slug}.jsonl"
     if not ablation_path.exists():
         print(f"[{track}] no {ablation_path} — skipping (run ablate.py "
               f"first if you expected this track).")
@@ -155,7 +156,7 @@ def judge_track(args, track: str, slug: str):
               f"--even-layers-only={args.even_layers_only}).")
 
     out_path = Path(
-        args.results_dir) / f"ablation_judged_{track}__{slug}.jsonl"
+        args.results_dir) / "raw" / f"ablation_judged_{track}__{slug}.jsonl"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if not args.resume and out_path.exists():
         out_path.unlink()
@@ -250,7 +251,7 @@ def main():
                         help="Judge only this track. Default judges both "
                         "(whichever ablation_{track}__*.jsonl files exist).")
     parser.add_argument("--results-dir",
-                        default="results/src")
+                        default="results")
     parser.add_argument("--resume", action="store_true", default=True)
     parser.add_argument("--no-resume", dest="resume", action="store_false")
     parser.add_argument(

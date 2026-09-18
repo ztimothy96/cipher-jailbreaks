@@ -130,7 +130,7 @@ def main(
 
     if out is None:
         suffix = "_smoketest" if smoke_test else ""
-        out = f"results/src/cipher_decode_check{suffix}__{model_slug(model)}.jsonl"
+        out = f"results/raw/cipher_decode_check{suffix}__{model_slug(model)}.jsonl"
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
