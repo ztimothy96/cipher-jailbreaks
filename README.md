@@ -3,7 +3,7 @@ This project aims to understand how cipher-based jailbreak attacks bypass model 
 - save compute budget, and
 - avoid jailbreaking large models that could actually cause damage.
 
-![polyrefuse-ablation](results/figures/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages__even_layers.png)
+![polyrefuse-ablation](results/figures/ablation_summary__Qwen__Qwen2.5-7B-Instruct__judge__languages.png)
 
 There are two main threads of the experiment, both living in `src/`:
 - PolyRefuse paper replication: find a refusal direction that generalizes across natural languages by ablating layers. and extends the same probe/ablation machinery to cipher formats.

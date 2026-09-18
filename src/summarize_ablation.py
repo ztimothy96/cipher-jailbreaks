@@ -82,8 +82,12 @@ def save_ablation_results(args: argparse.Namespace):
             print(f"[{fmt}] no 'baseline' condition found — skipping "
                   f"(ablate.py run incomplete for this format).")
             continue
+        dropped = []
         for condition in rates.index:
             if condition == "baseline":
+                continue
+            if args.min_n is not None and n[condition] < args.min_n:
+                dropped.append((condition, n[condition]))
                 continue
             rows.append({
                 "metric": metric_name,
@@ -95,6 +99,10 @@ def save_ablation_results(args: argparse.Namespace):
                 "echo_rate": echo_rates[condition],
                 "n": n[condition],
             })
+        if dropped:
+            print(f"[{fmt}] dropped {len(dropped)} layer(s) below "
+                 f"--min-n={args.min_n}: "
+                 f"{sorted(dropped, key=lambda t: int(t[0]))}")
     if not rows:
         print("No ablated-layer results to summarize (e.g. a baseline-only "
               "run) — skipping the refusal-rate-by-layer chart.")
@@ -215,8 +223,11 @@ def save_label_breakdown(args: argparse.Namespace):
 
     rows = []
     for (fmt, condition), group in df.groupby([fmt_field, "condition"]):
-        layer = -1 if condition == "baseline" else int(condition)
         n = len(group)
+        if (args.min_n is not None and condition != "baseline"
+                and n < args.min_n):
+            continue
+        layer = -1 if condition == "baseline" else int(condition)
         counts = group["judge_label"].value_counts()
         row = {"format": fmt, "condition": condition, "layer": layer, "n": n}
         for label in LABEL_ORDER:
@@ -307,6 +318,16 @@ def main():
     parser.add_argument("--even-layers-only",
                         action="store_true",
                         help="Plot only even-numbered ablated layers.")
+    parser.add_argument(
+        "--min-n",
+        type=int,
+        default=None,
+        help="Drop any (format, layer) point judged on fewer than this "
+        "many prompts — e.g. a stray 1-sample condition from an earlier "
+        "partial run — so the line chart doesn't zigzag between "
+        "well-sampled and barely-sampled layers. Baseline is exempt. "
+        "Typically set to whatever --max-prompts (or the sweep's actual "
+        "sample size) was for the layers you care about.")
     parser.add_argument(
         "--conditions",
         default=None,
