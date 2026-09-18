@@ -8,7 +8,8 @@ Usage:
     python3 src/summarize_ablation.py \\
         --model Qwen/Qwen2.5-7B-Instruct
     python3 src/summarize_ablation.py \\
-        --model Qwen/Qwen2.5-7B-Instruct --track ciphers
+        --model Qwen/Qwen2.5-7B-Instruct --track ciphers \\
+        --formats letter_spaced --samples 10
 """
 
 import argparse
@@ -43,8 +44,8 @@ LABEL_COLORS = {
 def save_ablation_results(args: argparse.Namespace):
     slug = model_slug(args.model)
     fmt_field = FMT_FIELD[args.track]
-    path = Path(
-        args.results_dir) / "raw" / f"ablation_judged_{args.track}__{slug}.jsonl"
+    path = Path(args.results_dir
+                ) / "raw" / f"ablation_judged_{args.track}__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
             f"Missing {path} — run ablate.py and groq_judge_ablation.py first."
@@ -56,21 +57,20 @@ def save_ablation_results(args: argparse.Namespace):
     records = [json.loads(l) for l in open(path) if l.strip()]
     df = pd.DataFrame(records)
     df = df[df["model"] == args.model]
-    if args.max_prompts is not None:
+    if args.formats is not None:
+        wanted = set(args.formats.split(","))
+        df = df[df[fmt_field].isin(wanted)]
+    if args.samples is not None:
         n_before = len(df)
-        df = df[df["prompt_id"] < args.max_prompts]
-        print(f"Restricted to prompt_id < {args.max_prompts}: "
-              f"{len(df)}/{n_before} records (keeps language curves "
-              f"comparable when some languages are judged on more "
-              f"prompts than others).\n")
+        df = df[df["prompt_id"] < args.samples]
+        print(f"Restricted to prompt_id < {args.samples}: "
+              f"{len(df)}/{n_before} records.\n")
     if args.conditions is not None:
         wanted = set(args.conditions.split(","))
         df = df[df["condition"].isin(wanted)]
 
     # echo_rate is reported alongside refusal_rate for every track, but only
-    # the ciphers track actually sees ECHO fire much (a model echoing/
-    # decoding-back a cipher instead of complying or refusing) — languages
-    # summaries just carry a near-zero column.
+    # the ciphers track actually sees ECHO fire much.
     rows = []
     for fmt, fmt_df in df.groupby(fmt_field):
         rates = fmt_df.groupby("condition")[metric_field].mean()
@@ -86,7 +86,7 @@ def save_ablation_results(args: argparse.Namespace):
         for condition in rates.index:
             if condition == "baseline":
                 continue
-            if args.min_n is not None and n[condition] < args.min_n:
+            if args.samples is not None and n[condition] < args.samples:
                 dropped.append((condition, n[condition]))
                 continue
             rows.append({
@@ -101,8 +101,8 @@ def save_ablation_results(args: argparse.Namespace):
             })
         if dropped:
             print(f"[{fmt}] dropped {len(dropped)} layer(s) below "
-                 f"--min-n={args.min_n}: "
-                 f"{sorted(dropped, key=lambda t: int(t[0]))}")
+                  f"--samples={args.samples}: "
+                  f"{sorted(dropped, key=lambda t: int(t[0]))}")
     if not rows:
         print("No ablated-layer results to summarize (e.g. a baseline-only "
               "run) — skipping the refusal-rate-by-layer chart.")
@@ -197,8 +197,8 @@ def save_label_breakdown(args: argparse.Namespace):
     echoing the cipher back or producing gibberish."""
     slug = model_slug(args.model)
     fmt_field = FMT_FIELD[args.track]
-    path = Path(
-        args.results_dir) / "raw" / f"ablation_judged_{args.track}__{slug}.jsonl"
+    path = Path(args.results_dir
+                ) / "raw" / f"ablation_judged_{args.track}__{slug}.jsonl"
     if not path.exists():
         raise SystemExit(
             f"Missing {path} — run ablate.py and groq_judge_ablation.py first."
@@ -207,8 +207,11 @@ def save_label_breakdown(args: argparse.Namespace):
     records = [json.loads(l) for l in open(path) if l.strip()]
     df = pd.DataFrame(records)
     df = df[df["model"] == args.model]
-    if args.max_prompts is not None:
-        df = df[df["prompt_id"] < args.max_prompts]
+    if args.formats is not None:
+        wanted = set(args.formats.split(","))
+        df = df[df[fmt_field].isin(wanted)]
+    if args.samples is not None:
+        df = df[df["prompt_id"] < args.samples]
     if args.conditions is not None:
         wanted = set(args.conditions.split(","))
         df = df[df["condition"].isin(wanted)]
@@ -224,8 +227,8 @@ def save_label_breakdown(args: argparse.Namespace):
     rows = []
     for (fmt, condition), group in df.groupby([fmt_field, "condition"]):
         n = len(group)
-        if (args.min_n is not None and condition != "baseline"
-                and n < args.min_n):
+        if (args.samples is not None and condition != "baseline"
+                and n < args.samples):
             continue
         layer = -1 if condition == "baseline" else int(condition)
         counts = group["judge_label"].value_counts()
@@ -271,15 +274,14 @@ def plot_label_breakdown(args: argparse.Namespace):
         for label in LABEL_ORDER:
             values = fmt_df[label.lower()].tolist()
             ax.bar(x,
-                  values,
-                  bottom=bottom,
-                  width=0.7,
-                  color=LABEL_COLORS[label],
-                  label=label.capitalize())
+                   values,
+                   bottom=bottom,
+                   width=0.7,
+                   color=LABEL_COLORS[label],
+                   label=label.capitalize())
             bottom = [b + v for b, v in zip(bottom, values)]
         ax.set_xticks(list(x))
-        ax.set_xticklabels(x_labels,
-                           rotation=90 if len(x_labels) > 12 else 0)
+        ax.set_xticklabels(x_labels, rotation=90 if len(x_labels) > 12 else 0)
         ax.set_ylim(0, 1.02)
         ax.set_xlabel("Ablated layer")
         ax.set_title(fmt.capitalize())
@@ -288,7 +290,7 @@ def plot_label_breakdown(args: argparse.Namespace):
     axes[-1].legend(loc="upper left", bbox_to_anchor=(1.02, 1.0))
 
     fig.suptitle(f"Judge label breakdown under single-layer ablation — "
-                f"{args.model}\ntrack={args.track}")
+                 f"{args.model}\ntrack={args.track}")
     fig.tight_layout()
 
     suffix = "__even_layers" if args.even_layers_only else ""
@@ -306,28 +308,28 @@ def main():
     parser.add_argument("--track",
                         choices=["languages", "ciphers"],
                         default="languages")
-    parser.add_argument("--results-dir",
-                        default="results")
+    parser.add_argument("--results-dir", default="results")
     parser.add_argument(
-        "--max-prompts",
+        "--samples",
         type=int,
         default=None,
-        help="Restrict to prompt_id < this many, so formats judged on "
-        "different numbers of prompts are still compared on the same "
-        "shared subset.")
+        help="Standardize every (format, layer) point to exactly this many "
+        "prompts: restricts to prompt_id < this value, and drops any "
+        "(format, layer) judged on fewer than this many prompts, so every "
+        "point in the plot represents the same sample size. "
+        "Baseline is exempt from the drop (but still restricted to "
+        "prompt_id < this value). Default: no restriction, uses whatever "
+        "each (format, layer) happens to have judged, which can mismatch.")
     parser.add_argument("--even-layers-only",
                         action="store_true",
                         help="Plot only even-numbered ablated layers.")
     parser.add_argument(
-        "--min-n",
-        type=int,
+        "--formats",
         default=None,
-        help="Drop any (format, layer) point judged on fewer than this "
-        "many prompts — e.g. a stray 1-sample condition from an earlier "
-        "partial run — so the line chart doesn't zigzag between "
-        "well-sampled and barely-sampled layers. Baseline is exempt. "
-        "Typically set to whatever --max-prompts (or the sweep's actual "
-        "sample size) was for the layers you care about.")
+        help="Comma-separated subset of formats to compare (languages: "
+        "e.g. 'english,chinese'; ciphers: e.g. 'letter_spaced'), same "
+        "naming as ablate.py's --formats. Default compares every format "
+        "present in the judged file.")
     parser.add_argument(
         "--conditions",
         default=None,
